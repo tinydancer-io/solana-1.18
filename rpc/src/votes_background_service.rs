@@ -1,10 +1,10 @@
 use std::{collections::HashMap, thread::{JoinHandle, Builder}, sync::{atomic::{AtomicBool, Ordering}, Arc}, time::Duration};
 use crossbeam_channel::{Receiver, RecvTimeoutError};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator, IntoParallelIterator};
 use solana_ledger::blockstore_processor::TransactionStatusMessage;
-use solana_sdk::{pubkey::Pubkey, transaction::SanitizedTransaction, message::SanitizedMessage};
-
-
+use solana_sdk::{pubkey::Pubkey, transaction::SanitizedTransaction, message::SanitizedMessage, slot_history::Slot, signature::Signature};
+use solana_vote::vote_parser::parse_sanitized_vote_transaction;
+use solana_vote_program::vote_state::VoteState;
 #[derive(Debug, Clone)]
 pub struct VoteAggregatorServiceConfig{
     //This would be our "Copy-on-chain" program address
@@ -40,59 +40,60 @@ impl VoteAggregatorService {
         self.thread_hdl.join()
     }
 
+    // filters by signature
     pub fn filter_transaction_of_interest(
         transaction_status_receiver: &Receiver<TransactionStatusMessage>,
-        t_o_i_pubkey: Pubkey,
+        t_o_i_signature: &Signature,
     ) -> Result<SanitizedTransaction, RecvTimeoutError>{
-        match transaction_status_receiver.recv_timeout(Duration::from_secs(1))? {
-            TransactionStatusMessage::Batch(batch) => {
-
+        match transaction_status_receiver.recv_timeout(Duration::from_secs(1)) {
+           Ok(TransactionStatusMessage::Batch(batch)) => {
                 // filter out vote transactions as we dont need them.
                 let filter_txs: Vec<_> = batch.transactions.par_iter().filter_map(|t|{
                     if !t.is_simple_vote_transaction(){
                         Some(t)
                     } else {
-                        None
+                       None
                     }
                 }).collect();
 
-                // extract out `TransactionMessage`s from the filtered transactions.
-                let extracted_tx_messages: Vec<_> = filter_txs.par_iter().map(|t|{
-                    t.message()
-                }).collect();
-
-                for m in extracted_tx_messages.iter(){
-                    // any operation on m in this block
-                    match m {
-                        SanitizedMessage::Legacy(m) => {
-                            let txs = m.message.account_keys.par_iter().for_each(|k| k == t_o_i_pubkey).collect();
-                        },
-                        SanitizedMessage::V0(m) => {
-
-                        },
-                    }
-                }
-
-                let tx = extracted_tx_messages.par_iter().map(|m|{
-                    match m{
-                        SanitizedMessage::Legacy(m) => {
-                            if m.message.account_keys.par_iter()
-                        },
-                        SanitizedMessage::V0(m) => {
-
-                        },
-                    }
-                })
-
-
-
-
-                Ok(())
+                let transaction_of_interest = filter_txs.into_par_iter().find_any(|t| {
+                    t.signature() == t_o_i_signature
+                }).unwrap(); 
+                
+                Ok(transaction_of_interest.clone())
             },
-            TransactionStatusMessage::Freeze(slot) => todo!(),
+            //TODO: can handle this case in a better way.
+           Ok(TransactionStatusMessage::Freeze(_)) => { Err(RecvTimeoutError::Timeout)},
+           Err(e) => Err(e),
         }
         
     }
+
+    pub fn filter_vote_transactions(
+        receiver: &Receiver<TransactionStatusMessage>,
+    ) -> Result<Vec<SanitizedTransaction>, RecvTimeoutError> {
+        match receiver.recv_timeout(Duration::from_secs(1)) {
+            Ok(msg) => match msg {
+                TransactionStatusMessage::Batch(batch) => {
+                    let filtered_txs: Vec<_> = batch.transactions.into_par_iter().filter_map(|t| {
+                        if t.is_simple_vote_transaction() {
+                            Some(t)
+                        } else {
+                            None
+                        }
+                    }).collect();
+                    Ok(filtered_txs)
+                },
+                _ => Ok(Vec::new()), // Return an empty vector for non-Batch messages
+            },
+            Err(err) => Err(err), // Handle the receive error
+        }
+    }
+    // pub fn get_votes_for_slot(
+    //     slot: u64,
+    // ) -> Vec<VoteState>{
+
+    // }
 
 
 }
