@@ -47,11 +47,13 @@ impl VoteAggregatorService {
         transaction_status_receiver: Arc<Receiver<TransactionStatusMessage>>,
         exit: Arc<AtomicBool>,
     ) -> Self {
+        info!("vote_aggregator_service | entrypoint");
         let mut votedb: Arc<DashMap<(Slot, Hash), Vec<Signature>>> = Arc::new(DashMap::default());
         let votedb_t = Arc::clone(&votedb);
         let thread_hdl = Builder::new()
             .name("votesAggService".to_string())
             .spawn(move || loop {
+                info!("vote_aggregator_service | spawn");
                 if exit.load(Ordering::Relaxed) {
                     break;
                 }
@@ -87,9 +89,11 @@ impl VoteAggregatorService {
                     pub timestamp: Option<UnixTimestamp>,
                 }
                  */
+                info!("vote_aggregator_service | start filter");
                 let vote_txns = VoteAggregatorService::filter_vote_transactions(
                     transaction_status_receiver.clone(),
                 );
+                info!("vote_aggregator_service | filtered votes");
                 match vote_txns {
                     Ok(votes) => {
                         let parsed_votes: Vec<ParsedVote> = votes
