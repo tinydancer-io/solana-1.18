@@ -93,7 +93,7 @@ impl VoteAggregatorService {
                 let vote_txns = VoteAggregatorService::filter_vote_transactions(
                     transaction_status_receiver.clone(),
                 );
-                info!("vote_aggregator_service | filtered votes");
+                info!("vote_aggregator_service | filtered votes {:?}",vote_txns);
                 match vote_txns {
                     Ok(votes) => {
                         let parsed_votes: Vec<ParsedVote> = votes
