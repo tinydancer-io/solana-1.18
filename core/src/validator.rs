@@ -1,6 +1,7 @@
 //! The `validator` module hosts all the validator microservices.
 
 pub use solana_perf::report_target_features;
+use solana_rpc::votes_background_service::{VoteAggregatorService, VoteAggregatorServiceConfig};
 use {
     crate::{
         accounts_hash_verifier::{AccountsHashFaultInjector, AccountsHashVerifier},
@@ -437,6 +438,7 @@ struct TransactionHistoryServices {
     max_complete_rewards_slot: Arc<AtomicU64>,
     cache_block_meta_sender: Option<CacheBlockMetaSender>,
     cache_block_meta_service: Option<CacheBlockMetaService>,
+    vote_aggregator_service: Option<VoteAggregatorService>
 }
 
 pub struct Validator {
@@ -446,6 +448,7 @@ pub struct Validator {
     rpc_completed_slots_service: JoinHandle<()>,
     optimistically_confirmed_bank_tracker: Option<OptimisticallyConfirmedBankTracker>,
     transaction_status_service: Option<TransactionStatusService>,
+    vote_aggregator_service: Option<VoteAggregatorService>,
     rewards_recorder_service: Option<RewardsRecorderService>,
     cache_block_meta_service: Option<CacheBlockMetaService>,
     entry_notifier_service: Option<EntryNotifierService>,
@@ -693,6 +696,7 @@ impl Validator {
                 max_complete_rewards_slot,
                 cache_block_meta_sender,
                 cache_block_meta_service,
+                vote_aggregator_service
             },
             blockstore_process_options,
             blockstore_root_scan,
@@ -730,7 +734,7 @@ impl Validator {
                 ));
             }
         }
-
+        
         let mut cluster_info = ClusterInfo::new(
             node.info.clone(),
             identity_keypair.clone(),
@@ -768,6 +772,7 @@ impl Validator {
                 (None, None)
             };
 
+       
         let (accounts_package_sender, accounts_package_receiver) = crossbeam_channel::unbounded();
         let accounts_hash_verifier = AccountsHashVerifier::new(
             accounts_package_sender.clone(),
@@ -1385,6 +1390,7 @@ impl Validator {
             repair_quic_endpoint,
             repair_quic_endpoint_runtime,
             repair_quic_endpoint_join_handle,
+            vote_aggregator_service
         })
     }
 
@@ -2174,7 +2180,7 @@ fn initialize_rpc_transaction_history_services(
         sender: transaction_status_sender,
     });
     let transaction_status_service = Some(TransactionStatusService::new(
-        transaction_status_receiver,
+        transaction_status_receiver.clone(),
         max_complete_transaction_status_slot.clone(),
         enable_rpc_transaction_history,
         transaction_notifier,
@@ -2200,6 +2206,8 @@ fn initialize_rpc_transaction_history_services(
         blockstore,
         exit,
     ));
+    let transaction_status_receiver = Arc::new(transaction_status_receiver);
+    let vote_aggregator_service = Some(VoteAggregatorService::new(VoteAggregatorServiceConfig{}, transaction_status_receiver, Arc::new(AtomicBool::new(false))));
     TransactionHistoryServices {
         transaction_status_sender,
         transaction_status_service,
@@ -2209,6 +2217,7 @@ fn initialize_rpc_transaction_history_services(
         max_complete_rewards_slot,
         cache_block_meta_sender,
         cache_block_meta_service,
+        vote_aggregator_service
     }
 }
 

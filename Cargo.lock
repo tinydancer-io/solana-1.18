@@ -6907,6 +6907,7 @@ dependencies = [
  "solana-net-utils",
  "solana-perf",
  "solana-poh",
+ "solana-program",
  "solana-rayon-threadlimit",
  "solana-rpc-client-api",
  "solana-runtime",
