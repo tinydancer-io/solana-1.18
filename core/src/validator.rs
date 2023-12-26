@@ -1464,6 +1464,10 @@ impl Validator {
                 .join()
                 .expect("transaction_status_service");
         }
+         
+        if let Some(vote_aggregator_service) = self.vote_aggregator_service{
+            vote_aggregator_service.join().expect("vote_aggregator_service");
+        }
 
         if let Some(rewards_recorder_service) = self.rewards_recorder_service {
             rewards_recorder_service
