@@ -101,11 +101,14 @@ impl VoteAggregatorService {
                             .map(|tx| parse_sanitized_vote_transaction(tx))
                             .flatten()
                             .collect();
+                        info!("vote_aggregator_service | parsed votes {:?}",parsed_votes);
                         let _ = parsed_votes.into_iter().map(|v| {
+
                             let key = (v.1.slots().last().unwrap().to_owned(), v.1.hash());
                             let binding = votedb_t.get(&key);
                             let maybe_prev_entry: Option<&Vec<Signature>> =
                                 binding.as_deref().clone();
+                                info!("vote_aggregator_service | maybe_prev_entry {:?}",maybe_prev_entry);
                             if let Some(prev_entry) = maybe_prev_entry {
                                 let mut new_entry = prev_entry.clone();
                                 new_entry.push(v.3);
