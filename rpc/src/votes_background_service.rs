@@ -103,9 +103,11 @@ impl VoteAggregatorService {
                             .collect();
                         info!("vote_aggregator_service | parsed votes {:?}",parsed_votes);
                         let _ = parsed_votes.into_iter().map(|v| {
-
+                            info!("vote_aggregator_service | enter_loop");
                             let key = (v.1.slots().last().unwrap().to_owned(), v.1.hash());
+                            info!("vote_aggregator_service | create_key");
                             let binding = votedb_t.get(&key);
+                            info!("vote_aggregator_service | get_key");
                             let maybe_prev_entry: Option<&Vec<Signature>> =
                                 binding.as_deref().clone();
                                 info!("vote_aggregator_service | maybe_prev_entry {:?}",maybe_prev_entry);
