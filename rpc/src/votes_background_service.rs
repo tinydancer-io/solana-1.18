@@ -1,4 +1,5 @@
 use crossbeam_channel::{Receiver, RecvTimeoutError};
+use dashmap::DashMap;
 use jsonrpc_core::futures_util::future::Join;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use solana_ledger::blockstore_processor::TransactionStatusMessage;
@@ -22,7 +23,6 @@ use std::{
     thread::{Builder, JoinHandle},
     time::Duration,
 };
-use dashmap::DashMap;
 
 pub const LIGHT_CLIENT_PROGRAM: &str = "3UVYmECPPMZSCqWKfENfuoTv51fTDTWicX9xmBD2euKe";
 #[derive(Debug, Clone)]
@@ -31,7 +31,6 @@ pub struct VoteAggregatorServiceConfig {
     // program_of_interest: Pubkey,
     // validator_set: HashMap<Pubkey, u64>,
 }
-
 
 pub struct VoteAggregatorService {
     thread_hdl: JoinHandle<()>,
@@ -57,7 +56,7 @@ impl VoteAggregatorService {
                 if exit.load(Ordering::Relaxed) {
                     break;
                 }
-                
+
                 // listens to receiver channel
                 //  X - if it receives status message then filter transaction of interest from batches
                 // filter vote txns then parse the data and read the slot and bankhash that they voted on
@@ -93,7 +92,7 @@ impl VoteAggregatorService {
                 let vote_txns = VoteAggregatorService::filter_vote_transactions(
                     transaction_status_receiver.clone(),
                 );
-                info!("vote_aggregator_service | filtered votes {:?}",vote_txns);
+                info!("vote_aggregator_service | filtered votes {:?}", vote_txns);
                 match vote_txns {
                     Ok(votes) => {
                         let parsed_votes: Vec<ParsedVote> = votes
@@ -101,8 +100,8 @@ impl VoteAggregatorService {
                             .map(|tx| parse_sanitized_vote_transaction(tx))
                             .flatten()
                             .collect();
-                        info!("vote_aggregator_service | parsed votes {:?}",parsed_votes);
-                        let _ = parsed_votes.into_iter().map(|v| {
+                        info!("vote_aggregator_service | parsed votes {:?}", parsed_votes);
+                        for v in parsed_votes {
                             info!("vote_aggregator_service | enter_loop");
                             let key = (v.1.slots().last().unwrap().to_owned(), v.1.hash());
                             info!("vote_aggregator_service | create_key");
@@ -110,28 +109,43 @@ impl VoteAggregatorService {
                             info!("vote_aggregator_service | get_key");
                             let maybe_prev_entry: Option<&Vec<Signature>> =
                                 binding.as_deref().clone();
-                                info!("vote_aggregator_service | maybe_prev_entry {:?}",maybe_prev_entry);
+                            info!(
+                                "vote_aggregator_service | maybe_prev_entry {:?}",
+                                maybe_prev_entry
+                            );
                             if let Some(prev_entry) = maybe_prev_entry {
                                 let mut new_entry = prev_entry.clone();
                                 new_entry.push(v.3);
-                                votedb_t.insert((v.1.slots().last().unwrap().to_owned(), v.1.hash()), new_entry.clone());
-                                info!("vote_aggregator_service, {:?}, {:?}, {:?}",v.1.slots().last().unwrap().to_owned(), v.1.hash(), new_entry);
+                                votedb_t.insert(
+                                    (v.1.slots().last().unwrap().to_owned(), v.1.hash()),
+                                    new_entry.clone(),
+                                );
+                                info!(
+                                    "vote_aggregator_service, {:?}, {:?}, {:?}",
+                                    v.1.slots().last().unwrap().to_owned(),
+                                    v.1.hash(),
+                                    new_entry
+                                );
                             } else {
-                                votedb_t.insert((v.1.slots().last().unwrap().to_owned(), v.1.hash()), vec![v.3]);
-                                info!("vote_aggregator_service {:?}, {:?}, {:?} ",v.1.slots().last().unwrap().to_owned(), v.1.hash(), vec![v.3]);
+                                votedb_t.insert(
+                                    (v.1.slots().last().unwrap().to_owned(), v.1.hash()),
+                                    vec![v.3],
+                                );
+                                info!(
+                                    "vote_aggregator_service {:?}, {:?}, {:?} ",
+                                    v.1.slots().last().unwrap().to_owned(),
+                                    v.1.hash(),
+                                    vec![v.3]
+                                );
                             }
-                        });
+                        }
                     }
                     _ => {}
                 }
                 // let display1:Vec<&Vec<Signature>>  = votedb.iter().map(|v| v.value()).collect();
-              
             })
             .unwrap();
-        Self {
-            thread_hdl,
-            votedb,
-        }
+        Self { thread_hdl, votedb }
     }
 
     pub fn join(self) -> std::thread::Result<()> {
