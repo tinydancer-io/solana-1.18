@@ -140,7 +140,7 @@ impl VoteAggregatorService {
                                 );
                             }
                             blockstore.write_vote_signatures(
-                                v.1.slots().last(),
+                                *v.1.slots().last().unwrap(),
                                     vec![v.3]
                             );
 
