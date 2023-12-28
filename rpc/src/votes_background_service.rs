@@ -2,7 +2,7 @@ use crossbeam_channel::{Receiver, RecvTimeoutError};
 use dashmap::DashMap;
 use jsonrpc_core::futures_util::future::Join;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use solana_ledger::blockstore_processor::TransactionStatusMessage;
+use solana_ledger::{blockstore_processor::TransactionStatusMessage, blockstore::Blockstore};
 use solana_program::hash::Hash;
 use solana_sdk::{
     message::SanitizedMessage, pubkey::Pubkey, signature::Signature, slot_history::Slot,
@@ -44,10 +44,11 @@ impl VoteAggregatorService {
     pub fn new(
         config: VoteAggregatorServiceConfig,
         transaction_status_receiver: Arc<Receiver<TransactionStatusMessage>>,
+        blockstore: Arc<Blockstore>,
         exit: Arc<AtomicBool>,
     ) -> Self {
         info!("vote_aggregator_service | entrypoint");
-        let mut votedb: Arc<DashMap<(Slot, Hash), Vec<Signature>>> = Arc::new(DashMap::default());
+        let votedb: Arc<DashMap<(Slot, Hash), Vec<Signature>>> = Arc::new(DashMap::default());
         let votedb_t = Arc::clone(&votedb);
         let thread_hdl = Builder::new()
             .name("votesAggService".to_string())
@@ -138,6 +139,11 @@ impl VoteAggregatorService {
                                     vec![v.3]
                                 );
                             }
+                            blockstore.write_vote_signatures(
+                                v.1.slots().last(),
+                                    vec![v.3]
+                            );
+
                         }
                     }
                     _ => {}

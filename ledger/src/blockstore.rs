@@ -217,6 +217,7 @@ pub struct Blockstore {
     optimistic_slots_cf: LedgerColumn<cf::OptimisticSlots>,
     max_root: AtomicU64,
     merkle_root_meta_cf: LedgerColumn<cf::MerkleRootMeta>,
+    vote_signatures_cf: LedgerColumn<cf::VoteSignatures>,
     insert_shreds_lock: Mutex<()>,
     new_shreds_signals: Mutex<Vec<Sender<bool>>>,
     completed_slots_senders: Mutex<Vec<CompletedSlotsSender>>,
@@ -319,6 +320,7 @@ impl Blockstore {
         let bank_hash_cf = db.column();
         let optimistic_slots_cf = db.column();
         let merkle_root_meta_cf = db.column();
+        let vote_signatures_cf = db.column();
 
         let db = Arc::new(db);
 
@@ -357,6 +359,7 @@ impl Blockstore {
             bank_hash_cf,
             optimistic_slots_cf,
             merkle_root_meta_cf,
+            vote_signatures_cf,
             new_shreds_signals: Mutex::default(),
             completed_slots_senders: Mutex::default(),
             shred_timing_point_sender: None,
@@ -2348,6 +2351,15 @@ impl Blockstore {
                 &AddressSignatureMeta { writeable: false },
             )?;
         }
+        Ok(())
+    }
+
+    pub fn write_vote_signatures(
+        &self,
+        slot: Slot,
+        signatures: Vec<Signature>,
+    ) -> Result<()>{
+        self.vote_signatures_cf.put(slot, &signatures)?;
         Ok(())
     }
 

@@ -106,6 +106,8 @@ const PROGRAM_COSTS_CF: &str = "program_costs";
 const OPTIMISTIC_SLOTS_CF: &str = "optimistic_slots";
 /// Column family for merkle roots
 const MERKLE_ROOT_META_CF: &str = "merkle_root_meta";
+/// Column family for vote signature
+const VOTE_SIGNATURES_CF: &str = "vote_signatures";
 
 #[derive(Error, Debug)]
 pub enum BlockstoreError {
@@ -355,12 +357,19 @@ pub mod columns {
     /// * value type: [`blockstore_meta::MerkleRootMeta`]`
     pub struct MerkleRootMeta;
 
+    #[derive(Debug)]
+    /// The vote signature column
+    /// Stores the vote signatures for a particular slot
+    /// TODO: Add details about indexing here.
+    pub struct VoteSignatures;
+
     // When adding a new column ...
     // - Add struct below and implement `Column` and `ColumnName` traits
     // - Add descriptor in Rocks::cf_descriptors() and name in Rocks::columns()
     // - Account for column in both `run_purge_with_stats()` and
     //   `compact_storage()` in ledger/src/blockstore/blockstore_purge.rs !!
     // - Account for column in `analyze_storage()` in ledger-tool/src/main.rs
+
 }
 
 #[derive(Default, Clone, Debug)]
@@ -494,6 +503,7 @@ impl Rocks {
             new_cf_descriptor::<ProgramCosts>(options, oldest_slot),
             new_cf_descriptor::<OptimisticSlots>(options, oldest_slot),
             new_cf_descriptor::<MerkleRootMeta>(options, oldest_slot),
+            new_cf_descriptor::<VoteSignatures>(options, oldest_slot),
         ];
 
         // If the access type is Secondary, we don't need to open all of the
@@ -567,6 +577,7 @@ impl Rocks {
             ProgramCosts::NAME,
             OptimisticSlots::NAME,
             MerkleRootMeta::NAME,
+            VoteSignatures::NAME,
         ]
     }
 
@@ -1320,6 +1331,37 @@ impl ColumnName for columns::MerkleRootMeta {
 }
 impl TypedColumn for columns::MerkleRootMeta {
     type Type = MerkleRootMeta;
+}
+
+impl Column for columns::VoteSignatures{
+    type Index = Slot; 
+
+    fn index(key: &[u8]) -> Self::Index {
+        let slot = BigEndian::read_u64(&key[..8]);
+        slot
+    }
+
+    fn key(slot: Slot) -> Vec<u8> {
+        let mut key = vec![0; 8];
+        BigEndian::write_u64(&mut key, slot);
+        key
+    }
+    
+    fn slot(index: Self::Index) -> Slot {
+        index
+    }
+
+    fn as_index(slot: Slot) -> Self::Index {
+        slot
+    }
+}
+
+impl ColumnName for columns::VoteSignatures{
+    const NAME: &'static str = VOTE_SIGNATURES_CF;
+}
+
+impl TypedColumn for columns::VoteSignatures{
+    type Type = Vec<Signature>;
 }
 
 #[derive(Debug)]

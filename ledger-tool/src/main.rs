@@ -830,6 +830,7 @@ fn analyze_storage(database: &Database) {
     analyze_column::<BlockHeight>(database, "BlockHeight");
     analyze_column::<ProgramCosts>(database, "ProgramCosts");
     analyze_column::<OptimisticSlots>(database, "OptimisticSlots");
+    analyze_column::<VoteSignatures>(database, "VoteSignatures")
 }
 
 fn raw_key_to_slot(key: &[u8], column_name: &str) -> Option<Slot> {

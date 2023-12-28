@@ -2182,6 +2182,13 @@ impl JsonRpcRequestProcessor {
             })
             .collect())
     }
+
+    fn get_votes_for_slot(
+        &self,
+        slot: Slot,
+    ) -> Result<Vec<Signature>>{
+        
+    }
 }
 
 fn optimize_filters(filters: &mut [RpcFilterType]) {
@@ -3420,6 +3427,13 @@ pub mod rpc_full {
             meta: Self::Metadata,
             pubkey_strs: Option<Vec<String>>,
         ) -> Result<Vec<RpcPrioritizationFee>>;
+        
+        #[rpc(meta, name = "getVotesSignaturesForSlot")]
+        fn get_vote_signatures_for_slot(
+            &self,
+            meta: Self::Metadata,
+            config: Option<RpcContextConfig>,
+        ) -> Result<RpcResponse<Vec<Signature>>>;
     }
 
     pub struct FullImpl;
@@ -4039,6 +4053,13 @@ pub mod rpc_full {
                 .map(|pubkey_str| verify_pubkey(&pubkey_str))
                 .collect::<Result<Vec<_>>>()?;
             meta.get_recent_prioritization_fees(pubkeys)
+        }
+        fn get_votes_for_slot(
+            &self,
+            meta: Self::Metadata,
+            config: Option<RpcContextConfig>,
+        ) -> Result<RpcResponse<(Vec<Signature>)>>{
+
         }
     }
 }
