@@ -2207,7 +2207,7 @@ fn initialize_rpc_transaction_history_services(
     let cache_block_meta_sender = Some(cache_block_meta_sender);
     let cache_block_meta_service = Some(CacheBlockMetaService::new(
         cache_block_meta_receiver,
-        blockstore,
+        blockstore.clone(),
         exit,
     ));
     let transaction_status_receiver = Arc::new(transaction_status_receiver);
