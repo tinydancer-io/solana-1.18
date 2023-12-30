@@ -1,8 +1,8 @@
 use crossbeam_channel::{Receiver, RecvTimeoutError};
 use dashmap::DashMap;
 use jsonrpc_core::futures_util::future::Join;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use solana_ledger::{blockstore_processor::TransactionStatusMessage, blockstore::Blockstore};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator, ParallelBridge};
+use solana_ledger::{blockstore_processor::TransactionStatusMessage, blockstore::Blockstore, blockstore_meta::VoteSignatureMeta};
 use solana_program::hash::Hash;
 use solana_sdk::{
     message::SanitizedMessage, pubkey::Pubkey, signature::Signature, slot_history::Slot,
@@ -101,49 +101,19 @@ impl VoteAggregatorService {
                             .map(|tx| parse_sanitized_vote_transaction(tx))
                             .flatten()
                             .collect();
+                        let mut votes_by_slot: HashMap<Slot, Vec<Signature>> = HashMap::new();
                         info!("vote_aggregator_service | parsed votes {:?}", parsed_votes);
                         for v in parsed_votes {
-                            info!("vote_aggregator_service | enter_loop");
-                            let key = (v.1.slots().last().unwrap().to_owned(), v.1.hash());
-                            info!("vote_aggregator_service | create_key");
-                            let binding = votedb_t.get(&key);
-                            info!("vote_aggregator_service | get_key");
-                            let maybe_prev_entry: Option<&Vec<Signature>> =
-                                binding.as_deref().clone();
-                            info!(
-                                "vote_aggregator_service | maybe_prev_entry {:?}",
-                                maybe_prev_entry
-                            );
-                            if let Some(prev_entry) = maybe_prev_entry {
-                                let mut new_entry = prev_entry.clone();
-                                new_entry.push(v.3);
-                                votedb_t.insert(
-                                    (v.1.slots().last().unwrap().to_owned(), v.1.hash()),
-                                    new_entry.clone(),
-                                );
-                                info!(
-                                    "vote_aggregator_service, {:?}, {:?}, {:?}",
-                                    v.1.slots().last().unwrap().to_owned(),
-                                    v.1.hash(),
-                                    new_entry
-                                );
-                            } else {
-                                votedb_t.insert(
-                                    (v.1.slots().last().unwrap().to_owned(), v.1.hash()),
-                                    vec![v.3],
-                                );
-                                info!(
-                                    "vote_aggregator_service {:?}, {:?}, {:?} ",
-                                    v.1.slots().last().unwrap().to_owned(),
-                                    v.1.hash(),
-                                    vec![v.3]
-                                );
-                            }
-                            blockstore.write_vote_signatures(
-                                *v.1.slots().last().unwrap(),
-                                    vec![v.3]
-                            );
+                            let slot = *v.1.slots().last().unwrap(); // Get the slot
+                            let signature = v.3; // Get the signature
 
+                            // Step 3: Aggregate signatures
+                            votes_by_slot.entry(slot).or_insert_with(Vec::new).push(signature);                        
+                        }
+                        // Step 4: Populating the blockstore.
+                        for (slot, signatures) in votes_by_slot {
+                            let vote_signature_meta = VoteSignatureMeta { signature: signatures };
+                            let _ = blockstore.write_vote_signature(slot, vote_signature_meta);
                         }
                     }
                     _ => {}
@@ -202,9 +172,11 @@ impl VoteAggregatorService {
                 TransactionStatusMessage::Batch(batch) => {
                     let filtered_txs: Vec<_> = batch
                         .transactions
-                        .into_par_iter()
-                        .filter_map(|t| {
-                            if t.is_simple_vote_transaction() {
+                        .into_iter()
+                        .zip(batch.execution_results.into_iter())
+                        .par_bridge()
+                        .filter_map(|(t, b)| {
+                            if t.is_simple_vote_transaction() && !b.is_none(){
                                 Some(t)
                             } else {
                                 None

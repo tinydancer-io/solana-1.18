@@ -1,4 +1,6 @@
 pub use rocksdb::Direction as IteratorDirection;
+
+use crate::blockstore_meta::VoteSignatureMeta;
 use {
     crate::{
         blockstore_meta,
@@ -153,6 +155,8 @@ pub enum BlockstoreError {
     MissingTransactionMetadata,
     #[error("transaction-index overflow")]
     TransactionIndexOverflow,
+    #[error("vote signatures unavailable for that particular slot")]
+    VoteSignaturesUnavailable
 }
 pub type Result<T> = std::result::Result<T, BlockstoreError>;
 
@@ -1361,7 +1365,7 @@ impl ColumnName for columns::VoteSignatures{
 }
 
 impl TypedColumn for columns::VoteSignatures{
-    type Type = Vec<Signature>;
+    type Type = VoteSignatureMeta;
 }
 
 #[derive(Debug)]

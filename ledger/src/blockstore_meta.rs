@@ -1,3 +1,5 @@
+use solana_sdk::signature::Signature;
+
 use {
     crate::shred::{Shred, ShredType},
     bitflags::bitflags,
@@ -147,6 +149,12 @@ pub struct MerkleRootMeta {
     /// The shred type of the first received shred
     first_received_shred_type: ShredType,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct VoteSignatureMeta{
+    pub signature: Vec<Signature>
+}
+
 
 #[derive(Deserialize, Serialize)]
 pub struct DuplicateSlotProof {

@@ -2354,15 +2354,34 @@ impl Blockstore {
         Ok(())
     }
 
-    pub fn write_vote_signatures(
+    pub fn write_vote_signature(
         &self,
         slot: Slot,
-        signatures: Vec<Signature>,
+        signature: VoteSignatureMeta,
     ) -> Result<()>{
-        self.vote_signatures_cf.put(slot, &signatures)?;
+        self.vote_signatures_cf.put(slot, &signature)?;
         Ok(())
     }
 
+    pub fn read_vote_signature(
+        &self,
+        slot: Slot
+    ) -> Result<Option<VoteSignatureMeta>>{
+         self.vote_signatures_cf.get(slot)
+    }
+
+    pub fn read_all_vote_signatures_for_slot(
+        &self,
+        slot: Slot,
+    ) -> Result<Vec<Signature>>{
+        let v_sigs = self.vote_signatures_cf.get(slot)?;
+        if v_sigs.is_some(){
+            Ok(v_sigs.unwrap().signature)
+        } else {
+            Err(BlockstoreError::VoteSignaturesUnavailable)
+        }
+    }
+    
     pub fn read_transaction_memos(
         &self,
         signature: Signature,

@@ -2183,11 +2183,17 @@ impl JsonRpcRequestProcessor {
             .collect())
     }
 
-    fn get_votes_for_slot(
+    fn get_vote_signatures_for_slot(
         &self,
         slot: Slot,
-    ) -> Result<Vec<Signature>>{
-        
+        config: RpcContextConfig,
+    ) -> Result<RpcResponse<Vec<Signature>>>{
+        let bank = self.get_bank_with_config(config)?;
+        let sigs = self.blockstore.read_all_vote_signatures_for_slot(slot).map_err(|e| Error::internal_error())?;
+        // .get_transaction_status(signature, confirmed_unrooted_slots)
+        Ok(
+            new_response(&bank, sigs)
+        )
     }
 }
 
@@ -3432,6 +3438,7 @@ pub mod rpc_full {
         fn get_vote_signatures_for_slot(
             &self,
             meta: Self::Metadata,
+            slot: Slot,
             config: Option<RpcContextConfig>,
         ) -> Result<RpcResponse<Vec<Signature>>>;
     }
@@ -4054,12 +4061,13 @@ pub mod rpc_full {
                 .collect::<Result<Vec<_>>>()?;
             meta.get_recent_prioritization_fees(pubkeys)
         }
-        fn get_votes_for_slot(
+        fn get_vote_signatures_for_slot(
             &self,
             meta: Self::Metadata,
+            slot: Slot,
             config: Option<RpcContextConfig>,
         ) -> Result<RpcResponse<(Vec<Signature>)>>{
-
+            meta.get_vote_signatures_for_slot(slot, config.unwrap_or_default())
         }
     }
 }
