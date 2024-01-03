@@ -4066,7 +4066,7 @@ pub mod rpc_full {
             meta: Self::Metadata,
             slot: Slot,
             config: Option<RpcContextConfig>,
-        ) -> Result<RpcResponse<(Vec<Signature>)>>{
+        ) -> Result<RpcResponse<Vec<Signature>>>{
             meta.get_vote_signatures_for_slot(slot, config.unwrap_or_default())
         }
     }

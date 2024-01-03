@@ -112,6 +112,7 @@ impl VoteAggregatorService {
                         }
                         // Step 4: Populating the blockstore.
                         for (slot, signatures) in votes_by_slot {
+                            info!("WE'RE INSIDE THE BLOCKSTORE LOOP");
                             let vote_signature_meta = VoteSignatureMeta { signature: signatures };
                             let _ = blockstore.write_vote_signature(slot, vote_signature_meta);
                         }
