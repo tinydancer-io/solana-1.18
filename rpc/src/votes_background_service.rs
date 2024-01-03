@@ -4,15 +4,10 @@ use jsonrpc_core::futures_util::future::Join;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator, ParallelBridge};
 use solana_ledger::{blockstore_processor::TransactionStatusMessage, blockstore::Blockstore, blockstore_meta::VoteSignatureMeta};
 use solana_program::hash::Hash;
-use solana_sdk::{
-    message::SanitizedMessage, pubkey::Pubkey, signature::Signature, slot_history::Slot,
+use solana_sdk::{pubkey::Pubkey, signature::Signature, slot_history::Slot,
     transaction::SanitizedTransaction,
 };
-use solana_vote::{
-    vote_parser::{parse_sanitized_vote_transaction, ParsedVote},
-    vote_transaction::VoteTransaction,
-};
-use solana_vote_program::vote_state::VoteState;
+use solana_vote::vote_parser::{parse_sanitized_vote_transaction, ParsedVote};
 use std::str::FromStr;
 use std::{
     collections::HashMap,
@@ -112,7 +107,7 @@ impl VoteAggregatorService {
                         }
                         // Step 4: Populating the blockstore.
                         for (slot, signatures) in votes_by_slot {
-                            info!("WE'RE INSIDE THE BLOCKSTORE LOOP");
+                            info!("WE'RE INSIDE THE BLOCKSTORE LOOP {:?}", signatures);
                             let vote_signature_meta = VoteSignatureMeta { signature: signatures };
                             let _ = blockstore.write_vote_signature(slot, vote_signature_meta);
                         }
