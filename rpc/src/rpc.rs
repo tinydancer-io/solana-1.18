@@ -2191,6 +2191,7 @@ impl JsonRpcRequestProcessor {
         let bank = self.get_bank_with_config(config)?;
         let sigs = self.blockstore.read_all_vote_signatures_for_slot(slot).map_err(|e| Error::internal_error())?;
         // .get_transaction_status(signature, confirmed_unrooted_slots)
+        info!("called get_vote_signatures_for_slot ");
         Ok(
             new_response(&bank, sigs)
         )

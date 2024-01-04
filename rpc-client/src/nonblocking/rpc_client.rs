@@ -2308,6 +2308,10 @@ impl RpcClient {
             .await
     }
 
+    pub async fn get_vote_signatures_for_slot(&self, slot: Slot, commitment_config: CommitmentConfig) -> ClientResult<Vec<Signature>>{
+        self.send(RpcRequest::GetVoteSignaturesForSlot,json!([slot,commitment_config])).await
+    }
+
     /// Returns the account info and associated stake for all the voting accounts
     /// that have reached the given [commitment level][cl].
     ///
