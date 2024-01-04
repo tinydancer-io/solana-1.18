@@ -3435,7 +3435,7 @@ pub mod rpc_full {
             pubkey_strs: Option<Vec<String>>,
         ) -> Result<Vec<RpcPrioritizationFee>>;
         
-        #[rpc(meta, name = "getVotesSignaturesForSlot")]
+        #[rpc(meta, name = "getVoteSignaturesForSlot")]
         fn get_vote_signatures_for_slot(
             &self,
             meta: Self::Metadata,
