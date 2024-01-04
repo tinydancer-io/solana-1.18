@@ -2308,7 +2308,7 @@ impl RpcClient {
             .await
     }
 
-    pub async fn get_vote_signatures_for_slot(&self, slot: Slot, commitment_config: CommitmentConfig) -> ClientResult<Vec<Signature>>{
+    pub async fn get_vote_signatures_for_slot(&self, slot: Slot, commitment_config: CommitmentConfig) -> ClientResult<Vec<String>>{
         self.send(RpcRequest::GetVoteSignaturesForSlot,json!([slot,commitment_config])).await
     }
 

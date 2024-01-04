@@ -2047,6 +2047,10 @@ impl RpcClient {
         self.invoke((self.rpc_client.as_ref()).get_block(slot))
     }
 
+    pub fn get_vote_signatures_for_slot(&self, slot: Slot, commitment: CommitmentConfig ) -> ClientResult<Vec<String>> {
+        self.invoke((self.rpc_client.as_ref()).get_vote_signatures_for_slot(slot, commitment))
+    }
+    
     /// Returns identity and transaction information about a confirmed block in the ledger.
     ///
     /// # RPC Reference

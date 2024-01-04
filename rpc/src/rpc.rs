@@ -2187,9 +2187,10 @@ impl JsonRpcRequestProcessor {
         &self,
         slot: Slot,
         config: RpcContextConfig,
-    ) -> Result<RpcResponse<Vec<Signature>>>{
+    ) -> Result<RpcResponse<Vec<String>>>{
         let bank = self.get_bank_with_config(config)?;
         let sigs = self.blockstore.read_all_vote_signatures_for_slot(slot).map_err(|e| Error::internal_error())?;
+        let sigs: Vec<String>= sigs.iter().map(|s| s.to_string()).collect();
         // .get_transaction_status(signature, confirmed_unrooted_slots)
         info!("called get_vote_signatures_for_slot ");
         Ok(
@@ -3441,7 +3442,7 @@ pub mod rpc_full {
             meta: Self::Metadata,
             slot: Slot,
             config: Option<RpcContextConfig>,
-        ) -> Result<RpcResponse<Vec<Signature>>>;
+        ) -> Result<RpcResponse<Vec<String>>>;
     }
 
     pub struct FullImpl;
@@ -4067,7 +4068,7 @@ pub mod rpc_full {
             meta: Self::Metadata,
             slot: Slot,
             config: Option<RpcContextConfig>,
-        ) -> Result<RpcResponse<Vec<Signature>>>{
+        ) -> Result<RpcResponse<Vec<String>>>{
             meta.get_vote_signatures_for_slot(slot, config.unwrap_or_default())
         }
     }
