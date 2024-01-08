@@ -3,7 +3,7 @@
 here=$(dirname "$0")
 # shellcheck source=multinode-demo/common.sh
 source "$here"/common.sh
-
+echo $solana_validator
 set -e
 
 rm -rf "$SOLANA_CONFIG_DIR"/bootstrap-validator
@@ -39,6 +39,7 @@ args=(
   --bootstrap-validator "$SOLANA_CONFIG_DIR"/bootstrap-validator/identity.json
                         "$SOLANA_CONFIG_DIR"/bootstrap-validator/vote-account.json
                         "$SOLANA_CONFIG_DIR"/bootstrap-validator/stake-account.json
+  --extra-primordial-stakes
 )
 
 "$SOLANA_ROOT"/fetch-spl.sh

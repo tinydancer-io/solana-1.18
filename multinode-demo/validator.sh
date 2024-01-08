@@ -264,7 +264,8 @@ default_arg --log -
 default_arg --full-rpc-api
 default_arg --no-incremental-snapshots
 default_arg --allow-private-addr
-
+default_arg --authorized-voter "$identity"
+default_arg --extra-primordial-stakes
 if [[ $maybeRequireTower = true ]]; then
   default_arg --require-tower
 fi

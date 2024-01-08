@@ -2137,6 +2137,7 @@ impl JsonRpcRequestProcessor {
     }
 
     fn get_latest_blockhash(&self, config: RpcContextConfig) -> Result<RpcResponse<RpcBlockhash>> {
+        info!("called get_latest_blockhash");
         let bank = self.get_bank_with_config(config)?;
         let blockhash = bank.last_blockhash();
         let last_valid_block_height = bank
@@ -2188,11 +2189,15 @@ impl JsonRpcRequestProcessor {
         slot: Slot,
         config: RpcContextConfig,
     ) -> Result<RpcResponse<Vec<String>>>{
+        info!("called get_vote_signatures_for_slot ");
         let bank = self.get_bank_with_config(config)?;
-        let sigs = self.blockstore.read_all_vote_signatures_for_slot(slot).map_err(|e| Error::internal_error())?;
+        info!("got bank get_vote_signatures_for_slot ");
+        let sigs = self.blockstore.read_all_vote_signatures_for_slot(slot).unwrap_or(vec![]);
+
+        info!("got signatures get_vote_signatures_for_slot {:?}",sigs);
         let sigs: Vec<String>= sigs.iter().map(|s| s.to_string()).collect();
         // .get_transaction_status(signature, confirmed_unrooted_slots)
-        info!("called get_vote_signatures_for_slot ");
+        info!("sending response get_vote_signatures_for_slot ");
         Ok(
             new_response(&bank, sigs)
         )

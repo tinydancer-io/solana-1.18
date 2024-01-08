@@ -1,7 +1,6 @@
 //! The `validator` module hosts all the validator microservices.
 
 pub use solana_perf::report_target_features;
-use solana_rpc::votes_background_service::{VoteAggregatorService, VoteAggregatorServiceConfig};
 use {
     crate::{
         accounts_hash_verifier::{AccountsHashFaultInjector, AccountsHashVerifier},
@@ -86,6 +85,7 @@ use {
         rpc_subscriptions::RpcSubscriptions,
         transaction_notifier_interface::TransactionNotifierArc,
         transaction_status_service::TransactionStatusService,
+        votes_background_service::{VoteAggregatorService, VoteAggregatorServiceConfig},
     },
     solana_runtime::{
         accounts_background_service::{
@@ -438,7 +438,7 @@ struct TransactionHistoryServices {
     max_complete_rewards_slot: Arc<AtomicU64>,
     cache_block_meta_sender: Option<CacheBlockMetaSender>,
     cache_block_meta_service: Option<CacheBlockMetaService>,
-    vote_aggregator_service: Option<VoteAggregatorService>
+    vote_aggregator_service: Option<VoteAggregatorService>,
 }
 
 pub struct Validator {
@@ -696,7 +696,7 @@ impl Validator {
                 max_complete_rewards_slot,
                 cache_block_meta_sender,
                 cache_block_meta_service,
-                vote_aggregator_service
+                vote_aggregator_service,
             },
             blockstore_process_options,
             blockstore_root_scan,
@@ -734,7 +734,7 @@ impl Validator {
                 ));
             }
         }
-        
+
         let mut cluster_info = ClusterInfo::new(
             node.info.clone(),
             identity_keypair.clone(),
@@ -772,7 +772,6 @@ impl Validator {
                 (None, None)
             };
 
-       
         let (accounts_package_sender, accounts_package_receiver) = crossbeam_channel::unbounded();
         let accounts_hash_verifier = AccountsHashVerifier::new(
             accounts_package_sender.clone(),
@@ -1390,7 +1389,7 @@ impl Validator {
             repair_quic_endpoint,
             repair_quic_endpoint_runtime,
             repair_quic_endpoint_join_handle,
-            vote_aggregator_service
+            vote_aggregator_service,
         })
     }
 
@@ -1464,9 +1463,11 @@ impl Validator {
                 .join()
                 .expect("transaction_status_service");
         }
-         
-        if let Some(vote_aggregator_service) = self.vote_aggregator_service{
-            vote_aggregator_service.join().expect("vote_aggregator_service");
+
+        if let Some(vote_aggregator_service) = self.vote_aggregator_service {
+            vote_aggregator_service
+                .join()
+                .expect("vote_aggregator_service");
         }
 
         if let Some(rewards_recorder_service) = self.rewards_recorder_service {
@@ -2179,6 +2180,7 @@ fn initialize_rpc_transaction_history_services(
     transaction_notifier: Option<TransactionNotifierArc>,
 ) -> TransactionHistoryServices {
     let max_complete_transaction_status_slot = Arc::new(AtomicU64::new(blockstore.max_root()));
+    info!("history_initialized");
     let (transaction_status_sender, transaction_status_receiver) = unbounded();
     let transaction_status_sender = Some(TransactionStatusSender {
         sender: transaction_status_sender,
@@ -2211,7 +2213,13 @@ fn initialize_rpc_transaction_history_services(
         exit,
     ));
     let transaction_status_receiver = Arc::new(transaction_status_receiver);
-    let vote_aggregator_service = Some(VoteAggregatorService::new(VoteAggregatorServiceConfig{}, transaction_status_receiver, blockstore.clone(), Arc::new(AtomicBool::new(false))));
+    let vote_aggregator_service = Some(VoteAggregatorService::new(
+        VoteAggregatorServiceConfig {},
+        transaction_status_receiver,
+        blockstore.clone(),
+        Arc::new(AtomicBool::new(false)),
+    ));
+    info!("vote_aggregator_initialized");
     TransactionHistoryServices {
         transaction_status_sender,
         transaction_status_service,
@@ -2221,7 +2229,7 @@ fn initialize_rpc_transaction_history_services(
         max_complete_rewards_slot,
         cache_block_meta_sender,
         cache_block_meta_service,
-        vote_aggregator_service
+        vote_aggregator_service,
     }
 }
 

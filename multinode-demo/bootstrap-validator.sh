@@ -16,6 +16,7 @@ fi
 if [[ -n $SOLANA_CUDA ]]; then
   program=$solana_validator_cuda
 else
+  echo $solana_validator
   program=$solana_validator
 fi
 
@@ -33,7 +34,7 @@ while [[ -n $1 ]]; do
       shift 2
     elif [[ $1 = --gossip-port ]]; then
       args+=("$1" "$2")
-      shift 2
+      shift -4
     elif [[ $1 = --dev-halt-at-slot ]]; then
       args+=("$1" "$2")
       shift 2
@@ -150,6 +151,7 @@ args+=(
   --no-wait-for-vote-to-start-leader
   --full-rpc-api
   --allow-private-addr
+  --enable-rpc-transaction-history
 )
 default_arg --gossip-port 8001
 default_arg --log -
