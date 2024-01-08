@@ -23,10 +23,10 @@ content=$(curl http://localhost:8899 -X POST -H "Content-Type: application/json"
   {
     "id":1,
     "jsonrpc":"2.0",
-    "method":"getVoteSignaturesForSlot",
+    "method":"getBlockHeaders",
     "params":[
     $blockhash,{
-    "commitment": "finalized"
+    "commitment": "confirmed"
   }
     ]
   }

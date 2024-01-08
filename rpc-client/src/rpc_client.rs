@@ -14,6 +14,7 @@ pub use crate::mock_sender::Mocks;
 use solana_rpc_client_api::deprecated_config::{
     RpcConfirmedBlockConfig, RpcConfirmedTransactionConfig,
 };
+use solana_transaction_status::BlockHeader;
 use {
     crate::{
         http_sender::HttpSender,
@@ -2047,6 +2048,10 @@ impl RpcClient {
         self.invoke((self.rpc_client.as_ref()).get_block(slot))
     }
 
+    pub fn get_block_headers(&self, slot: Slot) -> ClientResult<BlockHeader> {
+        self.invoke((self.rpc_client.as_ref()).get_block_headers(slot, UiTransactionEncoding::Json))
+    }
+    
     pub fn get_vote_signatures_for_slot(&self, slot: Slot, commitment: CommitmentConfig ) -> ClientResult<Vec<String>> {
         self.invoke((self.rpc_client.as_ref()).get_vote_signatures_for_slot(slot, commitment))
     }

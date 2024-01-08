@@ -644,6 +644,14 @@ pub struct ConfirmedBlock {
     pub block_height: Option<u64>,
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct BlockHeader {
+    pub vote_signature: Vec<Option<String>>,
+    pub validator_identity: Vec<Option<Pubkey>>,
+    // pub validator_stake: Vec<Option<u64>>,
+}
+
 // Confirmed block with type guarantees that transaction metadata
 // is always present. Used for uploading to BigTable.
 #[derive(Clone, Debug, PartialEq)]

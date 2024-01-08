@@ -12,6 +12,7 @@ use solana_rpc_client_api::deprecated_config::{
     RpcConfirmedBlockConfig, RpcConfirmedTransactionConfig,
     RpcGetConfirmedSignaturesForAddress2Config,
 };
+use solana_transaction_status::BlockHeader;
 #[cfg(feature = "spinner")]
 use {crate::spinner, solana_sdk::clock::MAX_HASH_AGE_IN_SECONDS, std::cmp::min};
 use {
@@ -2489,6 +2490,18 @@ impl RpcClient {
     pub async fn get_block(&self, slot: Slot) -> ClientResult<EncodedConfirmedBlock> {
         self.get_block_with_encoding(slot, UiTransactionEncoding::Json)
             .await
+    }
+
+    pub async fn get_block_headers(
+        &self,
+        slot: Slot,
+        encoding: UiTransactionEncoding,
+    ) -> ClientResult<BlockHeader> {
+        self.send(
+            self.maybe_map_request(RpcRequest::GetBlockHeaders).await?,
+            json!([slot, encoding]),
+        )
+        .await
     }
 
     /// Returns identity and transaction information about a confirmed block in the ledger.

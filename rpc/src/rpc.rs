@@ -1,4 +1,6 @@
 //! The `rpc` module implements the Solana RPC interface.
+
+use solana_transaction_status::{EncodedTransaction, UiInstruction, BlockHeader};
 use {
     crate::{
         max_slots::MaxSlots, optimistically_confirmed_bank_tracker::OptimisticallyConfirmedBank,
@@ -1243,6 +1245,59 @@ impl JsonRpcRequestProcessor {
         }
 
         Ok(blocks)
+    }
+
+    pub async fn get_block_headers(
+        &self,
+        slot: Slot,
+        config: Option<RpcEncodingConfigWrapper<RpcBlockConfig>>,
+    ) -> Result<BlockHeader> {
+        const VOTE_PROGRAM_ID: &str = "Vote111111111111111111111111111111111111111";
+        let block = self.get_block(slot, config).await;
+        let mut block_header: BlockHeader = BlockHeader::default();
+
+        for outer_txn in block.unwrap().unwrap().transactions.unwrap() {
+            match outer_txn.transaction {
+                EncodedTransaction::Json(inner_txn) => {
+                    match inner_txn.message {
+                        solana_transaction_status::UiMessage::Parsed(message) => {
+                            let aks: Vec<String> = message
+                                .account_keys
+                                .clone()
+                                .into_iter()
+                                .map(|key| key.pubkey)
+                                .collect();
+                            if aks.contains(&VOTE_PROGRAM_ID.to_string()) {
+                                let vote_signature = Some(inner_txn.signatures[0].clone());
+                                let validator_identity;
+                                let ixdata = message.instructions[0].clone();
+
+                                match ixdata {
+                                    UiInstruction::Parsed(_) => {
+                                        validator_identity =
+                                            Some(message.account_keys.get(0).unwrap());
+                                        
+                                        block_header.validator_identity.push(Some(
+                                            Pubkey::from_str(
+                                                validator_identity.unwrap().pubkey.as_str(),
+                                            )
+                                            .unwrap(),
+                                        ));
+                                        block_header.vote_signature.push(vote_signature);
+                                    }
+                                    _ => (),
+                                }
+                            }
+                        }
+                        _ => {
+                            error!("failing here {:?}", inner_txn.message);
+                        }
+                    }
+                }
+                _ => (),
+            };
+        }
+        Ok(block_header)
     }
 
     pub async fn get_blocks_with_limit(
@@ -3283,6 +3338,8 @@ pub mod rpc_accounts_scan {
 // Full RPC interface that an API node is expected to provide
 // (rpc_minimal should also be provided by an API node)
 pub mod rpc_full {
+    use solana_transaction_status::BlockHeader;
+
     use {
         super::*,
         solana_sdk::message::{SanitizedVersionedMessage, VersionedMessage},
@@ -3359,6 +3416,15 @@ pub mod rpc_full {
             slot: Slot,
             config: Option<RpcEncodingConfigWrapper<RpcBlockConfig>>,
         ) -> BoxFuture<Result<Option<UiConfirmedBlock>>>;
+
+
+        #[rpc(meta, name = "getBlockHeaders")]
+        fn get_block_headers(
+            &self,
+            meta: Self::Metadata,
+            slot: Slot,
+            config: Option<RpcEncodingConfigWrapper<RpcBlockConfig>>,
+        ) -> BoxFuture<Result<BlockHeader>>;
 
         #[rpc(meta, name = "getBlockTime")]
         fn get_block_time(
@@ -3873,6 +3939,16 @@ pub mod rpc_full {
             Box::pin(async move { meta.get_block(slot, config).await })
         }
 
+        fn get_block_headers(
+            &self,
+            meta: Self::Metadata,
+            slot: Slot,
+            config: Option<RpcEncodingConfigWrapper<RpcBlockConfig>>,
+        ) -> BoxFuture<Result<BlockHeader>> {
+            debug!("get_block_headers rpc request received: {:?}", slot);
+            Box::pin(async move { meta.get_block_headers(slot, config).await })
+        }
+        
         fn get_blocks(
             &self,
             meta: Self::Metadata,
