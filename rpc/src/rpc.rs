@@ -1256,8 +1256,9 @@ impl JsonRpcRequestProcessor {
         const VOTE_PROGRAM_ID: &str = "Vote111111111111111111111111111111111111111";
         info!("harsh | enter call");
 
+        // manually constructing config for `getBlock`
         let cfg = Some(RpcEncodingConfigWrapper::Current(Some(RpcBlockConfig {
-            encoding: Some(UiTransactionEncoding::Json),
+            encoding: Some(UiTransactionEncoding::JsonParsed),
             transaction_details: Some(TransactionDetails::Full),
             rewards: None,
             commitment: Some(CommitmentConfig {

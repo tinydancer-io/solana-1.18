@@ -156,7 +156,6 @@ impl VoteAggregatorService {
         transaction_status_receiver: Arc<Receiver<TransactionStatusMessage>>,
         // t_o_i_pubkey: &Pubkey,
     ) -> Result<Option<SanitizedTransaction>, RecvTimeoutError> {
-        info!("entering_filter");
         match transaction_status_receiver.recv_timeout(Duration::from_secs(60)) {
             Ok(TransactionStatusMessage::Batch(batch)) => {
                 // filter out vote transactions as we dont need them.
@@ -191,7 +190,6 @@ impl VoteAggregatorService {
     pub fn filter_vote_transactions(
         receiver: Arc<Receiver<TransactionStatusMessage>>,
     ) -> Result<Vec<SanitizedTransaction>, RecvError> {
-        info!("entering_filter_vote");
         match receiver.recv() {
             Ok(msg) => match msg {
                 TransactionStatusMessage::Batch(batch) => {
@@ -215,9 +213,4 @@ impl VoteAggregatorService {
             Err(err) => Err(err), // Handle the receive error
         }
     }
-    // pub fn get_votes_for_slot(
-    //     slot: u64,
-    // ) -> Vec<VoteState>{
-
-    // }
 }
