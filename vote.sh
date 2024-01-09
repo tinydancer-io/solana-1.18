@@ -23,7 +23,7 @@ content=$(curl http://localhost:$PORT -X POST -H "Content-Type: application/json
   {
     "id":1,
     "jsonrpc":"2.0",
-    "method":"getBlockHeaders",
+    "method":"getVoteSignatures",
     "params":[
     $blockhash,
 
