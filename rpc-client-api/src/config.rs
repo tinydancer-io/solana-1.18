@@ -90,6 +90,14 @@ pub struct RpcGetVoteAccountsConfig {
     pub delinquent_slot_distance: Option<u64>,
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcGetVoteSignaturesConfig {
+    pub vote_pubkey: Option<String>, // validator vote address, as a base-58 encoded string
+    #[serde(flatten)]
+    pub commitment: Option<CommitmentConfig>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum RpcLeaderScheduleConfigWrapper {

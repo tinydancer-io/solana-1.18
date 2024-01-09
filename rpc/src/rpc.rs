@@ -1,6 +1,7 @@
 //! The `rpc` module implements the Solana RPC interface.
 
-use solana_transaction_status::{EncodedTransaction, UiInstruction, TransactionDetails, VoteSignatures};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use solana_transaction_status::{EncodedTransaction, TransactionDetails, VoteSignatures};
 use {
     crate::{
         max_slots::MaxSlots, optimistically_confirmed_bank_tracker::OptimisticallyConfirmedBank,
@@ -1250,21 +1251,20 @@ impl JsonRpcRequestProcessor {
     pub async fn get_vote_signatures(
         &self,
         slot: Slot,
-        _config: Option<RpcEncodingConfigWrapper<RpcBlockConfig>>,
-
+        config: Option<RpcGetVoteSignaturesConfig>,
     ) -> Result<VoteSignatures> {
         const VOTE_PROGRAM_ID: &str = "Vote111111111111111111111111111111111111111";
-       info!("harsh | enter call"); 
+        info!("harsh | enter call");
 
-        let cfg = Some(
-            RpcEncodingConfigWrapper::Current(Some(RpcBlockConfig{
-                encoding: Some(UiTransactionEncoding::Json),
-                transaction_details: Some(TransactionDetails::Full),
-                rewards: None,
-                commitment: Some(CommitmentConfig{commitment:CommitmentLevel::Confirmed}),
-                max_supported_transaction_version: Some(0), 
-            }))
-        );
+        let cfg = Some(RpcEncodingConfigWrapper::Current(Some(RpcBlockConfig {
+            encoding: Some(UiTransactionEncoding::Json),
+            transaction_details: Some(TransactionDetails::Full),
+            rewards: None,
+            commitment: Some(CommitmentConfig {
+                commitment: CommitmentLevel::Confirmed,
+            }),
+            max_supported_transaction_version: Some(0),
+        })));
 
         let block = self.get_block(slot, cfg).await;
         info!("harsh | got block {}", block.clone().unwrap().is_some());
@@ -1272,7 +1272,6 @@ impl JsonRpcRequestProcessor {
 
         // info!("harsh | txn {:?}", block.clone.unwrap().unwrap().transactions.unwrap().len());
         for outer_txn in block.unwrap().unwrap().transactions.unwrap() {
-        
             match outer_txn.transaction {
                 EncodedTransaction::Json(inner_txn) => {
                     info!("harsh | match");
@@ -1285,20 +1284,33 @@ impl JsonRpcRequestProcessor {
                                 .into_iter()
                                 .map(|key| key.pubkey)
                                 .collect();
-                            if aks.contains(&VOTE_PROGRAM_ID.to_string()) {
-                                let vote_signature = Some(inner_txn.signatures[0].clone());
-                                let ixdata = message.instructions[0].clone();
-                                info!("harsh | vote");
-                                match ixdata {
-                                    UiInstruction::Parsed(_) => {
-                                            info!("harsh | sig");
-                                        vote_signatures.vote_signature.push(vote_signature);
-                                        info!("vote signature pushed");
+
+                            let validator_identity =
+                                message.account_keys.get(0).unwrap().pubkey.as_str();
+
+                            if let Some(c) = config.clone() {
+                                match c.vote_pubkey {
+                                    Some(p) => {
+                                        if aks.par_iter().any(|k| k == &VOTE_PROGRAM_ID.to_string())
+                                            && &p == validator_identity
+                                        {
+                                            let vote_signature =
+                                                Some(inner_txn.signatures[0].clone());
+                                            vote_signatures.vote_signature.push(vote_signature);
+                                        }
                                     }
-                                    _ => (),
+                                    // if there's no specified vote_pubkey in config, then collect all vote signatures
+                                    None => {
+                                        if aks.par_iter().any(|k| k == &VOTE_PROGRAM_ID.to_string())
+                                        {
+                                            let vote_signature =
+                                                Some(inner_txn.signatures[0].clone());
+                                            vote_signatures.vote_signature.push(vote_signature);
+                                        }
+                                    }
                                 }
-                            }
-                        },
+                            };
+                        }
                         _ => {
                             error!("harsh | failing here {:?}", inner_txn.message);
                         }
@@ -2253,19 +2265,15 @@ impl JsonRpcRequestProcessor {
         &self,
         slot: Slot,
         config: RpcContextConfig,
-    ) -> Result<RpcResponse<Vec<String>>>{
-        info!("called get_vote_signatures_for_slot ");
+    ) -> Result<RpcResponse<Vec<String>>> {
         let bank = self.get_bank_with_config(config)?;
-        info!("got bank get_vote_signatures_for_slot ");
-        let sigs = self.blockstore.read_all_vote_signatures_for_slot(slot).unwrap_or(vec![]);
-
-        info!("got signatures get_vote_signatures_for_slot {:?}",sigs);
-        let sigs: Vec<String>= sigs.iter().map(|s| s.to_string()).collect();
+        let sigs = self
+            .blockstore
+            .read_all_vote_signatures_for_slot(slot)
+            .unwrap_or(vec![]);
+        let sigs: Vec<String> = sigs.iter().map(|s| s.to_string()).collect();
         // .get_transaction_status(signature, confirmed_unrooted_slots)
-        info!("sending response get_vote_signatures_for_slot ");
-        Ok(
-            new_response(&bank, sigs)
-        )
+        Ok(new_response(&bank, sigs))
     }
 }
 
@@ -3427,13 +3435,12 @@ pub mod rpc_full {
             config: Option<RpcEncodingConfigWrapper<RpcBlockConfig>>,
         ) -> BoxFuture<Result<Option<UiConfirmedBlock>>>;
 
-
         #[rpc(meta, name = "getVoteSignatures")]
         fn get_vote_signatures(
             &self,
             meta: Self::Metadata,
             slot: Slot,
-            config: Option<RpcEncodingConfigWrapper<RpcBlockConfig>>,
+            config: Option<RpcGetVoteSignaturesConfig>,
         ) -> BoxFuture<Result<VoteSignatures>>;
 
         #[rpc(meta, name = "getBlockTime")]
@@ -3516,7 +3523,7 @@ pub mod rpc_full {
             meta: Self::Metadata,
             pubkey_strs: Option<Vec<String>>,
         ) -> Result<Vec<RpcPrioritizationFee>>;
-        
+
         #[rpc(meta, name = "getVoteSignaturesForSlot")]
         fn get_vote_signatures_for_slot(
             &self,
@@ -3953,12 +3960,12 @@ pub mod rpc_full {
             &self,
             meta: Self::Metadata,
             slot: Slot,
-            config: Option<RpcEncodingConfigWrapper<RpcBlockConfig>>,
+            config: Option<RpcGetVoteSignaturesConfig>,
         ) -> BoxFuture<Result<VoteSignatures>> {
             debug!("get_block_headers rpc request received: {:?}", slot);
             Box::pin(async move { meta.get_vote_signatures(slot, config).await })
         }
-        
+
         fn get_blocks(
             &self,
             meta: Self::Metadata,
@@ -4159,7 +4166,7 @@ pub mod rpc_full {
             meta: Self::Metadata,
             slot: Slot,
             config: Option<RpcContextConfig>,
-        ) -> Result<RpcResponse<Vec<String>>>{
+        ) -> Result<RpcResponse<Vec<String>>> {
             meta.get_vote_signatures_for_slot(slot, config.unwrap_or_default())
         }
     }

@@ -1,21 +1,16 @@
 use {
     crossbeam_channel::{Receiver, RecvError, RecvTimeoutError},
     dashmap::DashMap,
-    jsonrpc_core::futures_util::future::Join,
-    rayon::iter::{
-        IntoParallelIterator, IntoParallelRefIterator, ParallelBridge, ParallelIterator,
-    },
+    rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator},
     solana_ledger::{
         blockstore::Blockstore, blockstore_meta::VoteSignatureMeta,
         blockstore_processor::TransactionStatusMessage,
     },
-    solana_program::hash::Hash,
     solana_sdk::{
         pubkey::Pubkey, signature::Signature, slot_history::Slot, transaction::SanitizedTransaction,
     },
     solana_vote::vote_parser::{parse_sanitized_vote_transaction, ParsedVote},
     std::{
-        collections::HashMap,
         str::FromStr,
         sync::{
             atomic::{AtomicBool, Ordering},
@@ -91,51 +86,39 @@ impl VoteAggregatorService {
                     pub timestamp: Option<UnixTimestamp>,
                 }
                  */
-                info!("vote_aggregator_service | start filter");
                 let vote_txns = VoteAggregatorService::filter_vote_transactions(
                     transaction_status_receiver.clone(),
                 );
-                info!("vote_aggregator_service | filtered votes");
                 match vote_txns {
                     Ok(votes) => {
-                        info!(
-                            "vote_aggregator_service | found {:?} vote txns",
-                            votes.len()
-                        );
                         let parsed_votes: Vec<ParsedVote> = votes
                             .iter()
                             .map(|tx| parse_sanitized_vote_transaction(tx))
                             .flatten()
                             .collect();
                         // let mut votes_by_slot: HashMap<Slot, Vec<Signature>> = HashMap::new();
-                        info!(
-                            "vote_aggregator_service | parsed votes {:?}",
-                            parsed_votes.len()
-                        );
+
                         let votedb_t_clone = votedb_t.clone();
                         for v in parsed_votes {
-                            info!("vote_aggregator_service | enter parse vote loop");
                             let slot = *v.1.slots().last().unwrap(); // Get the slot
                             let signature = v.3; // Get the signature
                                                  //let bankhash = v.1.hash();
                                                  // Step 3: Aggregate signatures
-                            info!("vote_aggregator_service | pre get");
-                            //let maybe_prev_votes = votedb_t_clone.get(&slot);
-                            info!("vote_aggregator_service | post get");
-                            // if let Some(prev_votes) = maybe_prev_votes {
-                            //     let mut votes_to_push: Vec<Signature> =
-                            //         [prev_votes.as_slice()].concat();
-                            //
-                            //     // votes_to_push.append(&mut prev_votes);
-                            //     votes_to_push.push(signature);
-                            //     info!("vote_aggregator_service | pre v if");
-                            //     votedb_t_clone.insert(slot, votes_to_push);
-                            //     info!("vote_aggregator_service | post v if");
-                            // } else {
-                            //     info!("vote_aggregator_service | pre v else");
-                            //     votedb_t_clone.insert(slot, vec![signature]);
-                            //     info!("vote_aggregator_service | post v else");
-                            // }
+                                                 //let maybe_prev_votes = votedb_t_clone.get(&slot);
+                                                 // if let Some(prev_votes) = maybe_prev_votes {
+                                                 //     let mut votes_to_push: Vec<Signature> =
+                                                 //         [prev_votes.as_slice()].concat();
+                                                 //
+                                                 //     // votes_to_push.append(&mut prev_votes);
+                                                 //     votes_to_push.push(signature);
+                                                 //     info!("vote_aggregator_service | pre v if");
+                                                 //     votedb_t_clone.insert(slot, votes_to_push);
+                                                 //     info!("vote_aggregator_service | post v if");
+                                                 // } else {
+                                                 //     info!("vote_aggregator_service | pre v else");
+                                                 //     votedb_t_clone.insert(slot, vec![signature]);
+                                                 //     info!("vote_aggregator_service | post v else");
+                                                 // }
                             votedb_t_clone
                                 .entry(slot) // get the entry for `key`
                                 .and_modify(|slot_signatures| slot_signatures.push(signature)) // if it exists, modify it by pushing `item` to it
@@ -148,10 +131,8 @@ impl VoteAggregatorService {
                         let viter = votedb_t_clone.iter();
                         // Step 4: Populating the blockstore.
                         for item in viter {
-                            info!("vote_aggregator_service | sending to rocksdb");
                             let slot = item.key();
                             let signatures = item.value();
-                            info!("WE'RE INSIDE THE BLOCKSTORE LOOP {:?}", signatures);
                             let vote_signature_meta = VoteSignatureMeta {
                                 signature: signatures.to_vec(),
                             };

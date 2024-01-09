@@ -225,7 +225,10 @@ impl Blockstore {
                 .db
                 .delete_range_cf::<cf::MerkleRootMeta>(&mut write_batch, from_slot, to_slot)
                 .is_ok()
-            & self.db.delete_range_cf::<cf::VoteSignatures>(&mut write_batch, from_slot, to_slot).is_ok();
+            & self
+                .db
+                .delete_range_cf::<cf::VoteSignatures>(&mut write_batch, from_slot, to_slot)
+                .is_ok();
 
         match purge_type {
             PurgeType::Exact => {

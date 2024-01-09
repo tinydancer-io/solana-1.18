@@ -151,10 +151,9 @@ pub struct MerkleRootMeta {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct VoteSignatureMeta{
-    pub signature: Vec<Signature>
+pub struct VoteSignatureMeta {
+    pub signature: Vec<Signature>,
 }
-
 
 #[derive(Deserialize, Serialize)]
 pub struct DuplicateSlotProof {

@@ -156,7 +156,7 @@ pub enum BlockstoreError {
     #[error("transaction-index overflow")]
     TransactionIndexOverflow,
     #[error("vote signatures unavailable for that particular slot")]
-    VoteSignaturesUnavailable
+    VoteSignaturesUnavailable,
 }
 pub type Result<T> = std::result::Result<T, BlockstoreError>;
 
@@ -373,7 +373,6 @@ pub mod columns {
     // - Account for column in both `run_purge_with_stats()` and
     //   `compact_storage()` in ledger/src/blockstore/blockstore_purge.rs !!
     // - Account for column in `analyze_storage()` in ledger-tool/src/main.rs
-
 }
 
 #[derive(Default, Clone, Debug)]
@@ -1337,8 +1336,8 @@ impl TypedColumn for columns::MerkleRootMeta {
     type Type = MerkleRootMeta;
 }
 
-impl Column for columns::VoteSignatures{
-    type Index = Slot; 
+impl Column for columns::VoteSignatures {
+    type Index = Slot;
 
     fn index(key: &[u8]) -> Self::Index {
         let slot = BigEndian::read_u64(&key[..8]);
@@ -1350,7 +1349,7 @@ impl Column for columns::VoteSignatures{
         BigEndian::write_u64(&mut key, slot);
         key
     }
-    
+
     fn slot(index: Self::Index) -> Slot {
         index
     }
@@ -1360,11 +1359,11 @@ impl Column for columns::VoteSignatures{
     }
 }
 
-impl ColumnName for columns::VoteSignatures{
+impl ColumnName for columns::VoteSignatures {
     const NAME: &'static str = VOTE_SIGNATURES_CF;
 }
 
-impl TypedColumn for columns::VoteSignatures{
+impl TypedColumn for columns::VoteSignatures {
     type Type = VoteSignatureMeta;
 }
 
