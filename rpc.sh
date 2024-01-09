@@ -19,6 +19,8 @@ exec target/release/solana-validator \
 --log /mnt/ssd1/validator.log \
 --accounts /mnt/ssd1/accounts \
 --ledger /mnt/ssd1/ledger \
+--no-genesis-fetch \
+--no-snapshot-fetch \
 --snapshots /mnt/ssd1/snapshots \
 --limit-ledger-size 400000000 \
 --rpc-send-default-max-retries 3 \
@@ -26,10 +28,7 @@ exec target/release/solana-validator \
 --rpc-send-retry-ms 2000 \
 --full-rpc-api \
 --accounts-index-memory-limit-mb 350 \
---no-genesis-fetch \
---no-snapshot-fetch \
 --no-poh-speed-test \
---no-port-check \
 --only-known-rpc \
 --known-validator sce1TVNf6tBniHXqhkj7NY9wxaBsoQrpXKzfYXBG9v2 \
 --known-validator sce3PzrJU8j5Qa7WtRejXq7hFywUBh8jutVx929Hagw \

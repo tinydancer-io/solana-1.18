@@ -1,0 +1,3 @@
+log file: /mnt/ssd1/validator.log
+log file: /mnt/ssd1/validator.log
+Error: Unable to lock /mnt/ssd1/ledger directory. Check if another validator is running

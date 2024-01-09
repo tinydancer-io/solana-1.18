@@ -646,10 +646,8 @@ pub struct ConfirmedBlock {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct BlockHeader {
+pub struct VoteSignatures {
     pub vote_signature: Vec<Option<String>>,
-    pub validator_identity: Vec<Option<Pubkey>>,
-    // pub validator_stake: Vec<Option<u64>>,
 }
 
 // Confirmed block with type guarantees that transaction metadata

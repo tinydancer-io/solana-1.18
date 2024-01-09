@@ -12,7 +12,7 @@ use solana_rpc_client_api::deprecated_config::{
     RpcConfirmedBlockConfig, RpcConfirmedTransactionConfig,
     RpcGetConfirmedSignaturesForAddress2Config,
 };
-use solana_transaction_status::BlockHeader;
+use solana_transaction_status::VoteSignatures;
 #[cfg(feature = "spinner")]
 use {crate::spinner, solana_sdk::clock::MAX_HASH_AGE_IN_SECONDS, std::cmp::min};
 use {
@@ -2492,13 +2492,13 @@ impl RpcClient {
             .await
     }
 
-    pub async fn get_block_headers(
+    pub async fn get_vote_signatures(
         &self,
         slot: Slot,
         encoding: UiTransactionEncoding,
-    ) -> ClientResult<BlockHeader> {
+    ) -> ClientResult<VoteSignatures> {
         self.send(
-            self.maybe_map_request(RpcRequest::GetBlockHeaders).await?,
+            self.maybe_map_request(RpcRequest::GetVoteSignatures).await?,
             json!([slot, encoding]),
         )
         .await

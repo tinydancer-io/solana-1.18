@@ -2213,12 +2213,13 @@ fn initialize_rpc_transaction_history_services(
         exit,
     ));
     let transaction_status_receiver = Arc::new(transaction_status_receiver);
-    let vote_aggregator_service = Some(VoteAggregatorService::new(
-        VoteAggregatorServiceConfig {},
-        transaction_status_receiver,
-        blockstore.clone(),
-        Arc::new(AtomicBool::new(false)),
-    ));
+    // let vote_aggregator_service = Some(VoteAggregatorService::new(
+    //     VoteAggregatorServiceConfig {},
+    //     transaction_status_receiver,
+    //     blockstore.clone(),
+    //     Arc::new(AtomicBool::new(false)),
+    // ));
+    let vote_aggregator_service = None;
     info!("vote_aggregator_initialized");
     TransactionHistoryServices {
         transaction_status_sender,

@@ -1,13 +1,13 @@
 #! /bin/bash
 
-content=$(curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+content=$(curl http://localhost:$PORT -X POST -H "Content-Type: application/json" -d '
   {
     "id":1,
     "jsonrpc":"2.0",
     "method":"getLatestBlockhash",
     "params":[
       {
-        "commitment":"finalized"
+        "commitment":"confirmed"
       }
     ]
   }
@@ -19,16 +19,19 @@ content=$(curl http://localhost:8899 -X POST -H "Content-Type: application/json"
   echo $blockhash
 #
 #   #echo $body
-  curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d @<( cat <<EOF
+  curl http://localhost:$PORT -X POST -H "Content-Type: application/json" -d @<( cat <<EOF
   {
     "id":1,
     "jsonrpc":"2.0",
     "method":"getBlockHeaders",
     "params":[
-    $blockhash,{
-    "commitment": "confirmed"
-  }
-    ]
+    $blockhash,
+
+  { "commitment":"confirmed", "encoding": "jsonParsed",
+        "maxSupportedTransactionVersion":0,
+        "transactionDetails":"full",
+        "rewards":false
+      } ]
   }
 EOF
 )

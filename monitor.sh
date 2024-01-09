@@ -1,3 +1,3 @@
 
 #! /bin/bash
-./target/debug/solana-validator --ledger /mnt/ledger/ monitor 
+./target/debug/solana-validator --ledger /mnt/ssd1/ledger/ monitor 
