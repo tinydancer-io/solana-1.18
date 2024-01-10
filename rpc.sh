@@ -20,7 +20,6 @@ exec target/release/solana-validator \
 --accounts /mnt/ssd1/accounts \
 --ledger /mnt/ssd1/ledger \
 --no-genesis-fetch \
---no-snapshot-fetch \
 --snapshots /mnt/ssd1/snapshots \
 --limit-ledger-size 400000000 \
 --rpc-send-default-max-retries 3 \

@@ -28,9 +28,6 @@ content=$(curl http://localhost:$PORT -X POST -H "Content-Type: application/json
     $blockhash,
 
   { "commitment":"confirmed", "encoding": "jsonParsed",
-        "maxSupportedTransactionVersion":0,
-        "transactionDetails":"full",
-        "rewards":false
       } ]
   }
 EOF

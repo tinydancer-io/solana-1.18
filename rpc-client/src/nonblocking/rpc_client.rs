@@ -2504,11 +2504,12 @@ impl RpcClient {
         &self,
         slot: Slot,
         encoding: UiTransactionEncoding,
+        config: RpcGetVoteSignaturesConfig,
     ) -> ClientResult<VoteSignatures> {
         self.send(
             self.maybe_map_request(RpcRequest::GetVoteSignatures)
                 .await?,
-            json!([slot, encoding]),
+            json!([slot, encoding, config]),
         )
         .await
     }
