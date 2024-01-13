@@ -1273,53 +1273,50 @@ impl JsonRpcRequestProcessor {
 
         // info!("harsh | txn {:?}", block.clone.unwrap().unwrap().transactions.unwrap().len());
         for outer_txn in block.unwrap().unwrap().transactions.unwrap() {
-            match outer_txn.transaction {
-                EncodedTransaction::Json(inner_txn) => {
-                    info!("harsh | match");
-                    match inner_txn.message {
-                        solana_transaction_status::UiMessage::Parsed(message) => {
-                            info!("harsh | message");
-                            let aks: HashSet<String> = message
-                                .account_keys
-                                .clone()
-                                .into_iter()
-                                .map(|key| key.pubkey)
-                                .collect();
+            if let EncodedTransaction::Json(inner_txn) = outer_txn.transaction {
+                info!("harsh | match");
+                match inner_txn.message {
+                    solana_transaction_status::UiMessage::Parsed(message) => {
+                        info!("harsh | message");
+                        let aks: HashSet<String> = message
+                            .account_keys
+                            .clone()
+                            .into_iter()
+                            .map(|key| key.pubkey)
+                            .collect();
 
-                            let validator_identity =
-                                message.account_keys.get(0).unwrap().pubkey.as_str();
+                        let validator_identity =
+                            message.account_keys.get(0).unwrap().pubkey.as_str();
 
-                            if let Some(c) = config.clone() {
-                                match c.vote_pubkey {
-                                    Some(p) => {
-                                        if aks.par_iter().any(|k| k == &VOTE_PROGRAM_ID.to_string())
-                                            // && &p == validator_identity // for a single validator identity check
-                                            && p.par_iter().any(|k| k == validator_identity) //maybe just do something like p.iter().contains(|k| k == validator_identity)
-                                        {
-                                            let vote_signature =
-                                                Some(inner_txn.signatures[0].clone());
-                                            vote_signatures.vote_signature.push(vote_signature);
-                                        }
-                                    }
-                                    // if there's no specified vote_pubkey in config, then collect all vote signatures
-                                    None => {
-                                        if aks.par_iter().any(|k| k == &VOTE_PROGRAM_ID.to_string())
-                                        {
-                                            let vote_signature =
-                                                Some(inner_txn.signatures[0].clone());
-                                            vote_signatures.vote_signature.push(vote_signature);
-                                        }
+                        if let Some(c) = config.clone() {
+                            match c.vote_pubkey {
+                                Some(p) => {
+                                    if aks.contains(&VOTE_PROGRAM_ID.to_string())
+                                            // p == validator_identity // for a single validator identity check
+                                            && p.contains(validator_identity)
+                                    {
+                                        let vote_signature = Some(inner_txn.signatures[0].clone());
+                                        vote_signatures.vote_signature.push(vote_signature);
+                                    } else if aks.contains(&VOTE_PROGRAM_ID.to_string()) {
+                                        let vote_signature = Some(inner_txn.signatures[0].clone());
+                                        vote_signatures.vote_signature.push(vote_signature);
                                     }
                                 }
-                            };
-                        }
-                        _ => {
-                            error!("harsh | failing here {:?}", inner_txn.message);
-                        }
+                                // if there's no specified vote_pubkey in config, then collect all vote signatures
+                                None => {
+                                    if aks.contains(&VOTE_PROGRAM_ID.to_string()) {
+                                        let vote_signature = Some(inner_txn.signatures[0].clone());
+                                        vote_signatures.vote_signature.push(vote_signature);
+                                    }
+                                }
+                            }
+                        };
+                    }
+                    _ => {
+                        error!("harsh | failing here {:?}", inner_txn.message);
                     }
                 }
-                _ => (),
-            };
+            }
         }
         Ok(vote_signatures)
     }

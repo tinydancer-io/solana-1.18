@@ -2048,10 +2048,16 @@ impl RpcClient {
         self.invoke((self.rpc_client.as_ref()).get_block(slot))
     }
 
-    pub fn get_vote_signatures(&self, slot: Slot, config: RpcGetVoteSignaturesConfig) -> ClientResult<VoteSignatures> {
-        self.invoke(
-            (self.rpc_client.as_ref()).get_vote_signatures(slot, UiTransactionEncoding::Json, config),
-        )
+    pub fn get_vote_signatures(
+        &self,
+        slot: Slot,
+        config: RpcGetVoteSignaturesConfig,
+    ) -> ClientResult<VoteSignatures> {
+        self.invoke((self.rpc_client.as_ref()).get_vote_signatures(
+            slot,
+            UiTransactionEncoding::Json,
+            config,
+        ))
     }
 
     pub fn get_vote_signatures_for_slot(

@@ -27,7 +27,7 @@ content=$(curl http://localhost:$PORT -X POST -H "Content-Type: application/json
     "params":[
     $blockhash,
     { 
-      "votePubkey": ["Ninja1spj6n9t5hVYgF3PdnYz2PLnkt7rvaw3firmjs"],
+      "votePubkey": ["2PGcByR5L2pyyt2mqPhprBPta6Bmz9VK4RvjBdonwcGh"],
       "commitment":"confirmed"
     } 
   ]
