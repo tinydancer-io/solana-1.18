@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use {
     crate::filter::RpcFilterType,
     solana_account_decoder::{UiAccountEncoding, UiDataSliceConfig},
@@ -93,7 +95,7 @@ pub struct RpcGetVoteAccountsConfig {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcGetVoteSignaturesConfig {
-    pub vote_pubkey: Option<String>, // validator vote address, as a base-58 encoded string
+    pub vote_pubkey: Option<HashSet<String>>, // validator vote address, as a base-58 encoded string
     #[serde(flatten)]
     pub commitment: Option<CommitmentConfig>,
 }

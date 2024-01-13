@@ -1279,7 +1279,7 @@ impl JsonRpcRequestProcessor {
                     match inner_txn.message {
                         solana_transaction_status::UiMessage::Parsed(message) => {
                             info!("harsh | message");
-                            let aks: Vec<String> = message
+                            let aks: HashSet<String> = message
                                 .account_keys
                                 .clone()
                                 .into_iter()
@@ -1293,7 +1293,8 @@ impl JsonRpcRequestProcessor {
                                 match c.vote_pubkey {
                                     Some(p) => {
                                         if aks.par_iter().any(|k| k == &VOTE_PROGRAM_ID.to_string())
-                                            && &p == validator_identity
+                                            // && &p == validator_identity // for a single validator identity check
+                                            && p.par_iter().any(|k| k == validator_identity) //maybe just do something like p.iter().contains(|k| k == validator_identity)
                                         {
                                             let vote_signature =
                                                 Some(inner_txn.signatures[0].clone());
