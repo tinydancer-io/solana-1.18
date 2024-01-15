@@ -27,10 +27,10 @@ content=$(curl http://localhost:$PORT -X POST -H "Content-Type: application/json
     "params":[
     $blockhash,
     { 
-      "votePubkey": ["2PGcByR5L2pyyt2mqPhprBPta6Bmz9VK4RvjBdonwcGh"],
+      "votePubkey": ["3ANJb42D3pkVtntgT6VtW2cD3icGVyoHi2NGwtXYHQAs","J7v9ndmcoBuo9to2MnHegLnBkC9x3SAVbQBJo5MMJrN1"],
       "commitment":"confirmed"
     } 
   ]
   }
 EOF
-)
+) | jq

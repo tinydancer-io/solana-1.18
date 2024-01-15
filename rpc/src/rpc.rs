@@ -1,5 +1,6 @@
 //! The `rpc` module implements the Solana RPC interface.
 
+use solana_program::{instruction::CompiledInstruction, message::Message};
 use solana_transaction_status::{EncodedTransaction, TransactionDetails, VoteSignatures};
 use {
     crate::{
@@ -1257,7 +1258,7 @@ impl JsonRpcRequestProcessor {
 
         // manually constructing config for `getBlock`
         let cfg = Some(RpcEncodingConfigWrapper::Current(Some(RpcBlockConfig {
-            encoding: Some(UiTransactionEncoding::JsonParsed),
+            encoding: Some(UiTransactionEncoding::Json),
             transaction_details: Some(TransactionDetails::Full),
             rewards: None,
             commitment: Some(CommitmentConfig {
@@ -1275,33 +1276,59 @@ impl JsonRpcRequestProcessor {
             if let EncodedTransaction::Json(inner_txn) = outer_txn.transaction  {
                     info!("harsh | match");
                     match inner_txn.message {
-                        solana_transaction_status::UiMessage::Parsed(message) => {
+                        solana_transaction_status::UiMessage::Raw(message) => {
                             info!("harsh | message");
                             let aks: HashSet<String> = message
                                 .account_keys
                                 .clone()
                                 .into_iter()
-                                .map(|key| key.pubkey)
+                                .map(|key| key)
                                 .collect();
+                            
+                            let mut compiled_instruction: Vec<CompiledInstruction> = vec![];
+                            let mut account_keys: Vec<Pubkey> = vec![];
 
+                            let messagec = message.clone();
+                            for ui_ix in messagec.instructions{
+                                compiled_instruction.push(
+                                    CompiledInstruction { program_id_index: ui_ix.program_id_index, accounts: ui_ix.accounts, data: bs58::decode( ui_ix.data).into_vec().unwrap() }
+                                );
+                            }
+                            for key in messagec.account_keys{
+                                account_keys.push(
+                                    Pubkey::from_str(&key).unwrap()
+                                );
+                            }
+                           let vote_message = Message{
+                               header: messagec.header,
+                               account_keys,
+                               recent_blockhash: Hash::from_str(&messagec.recent_blockhash).unwrap(),
+                               instructions: compiled_instruction
+                           };
+                           let vote_message = vote_message.serialize();
                             let validator_identity =
-                                message.account_keys.get(0).unwrap().pubkey.as_str();
+                                message.account_keys.get(0).unwrap();
 
                             if let Some(c) = config.clone() {
                                 match c.vote_pubkey {
                                     Some(p) => {
                                         if aks.contains(&VOTE_PROGRAM_ID.to_string())
                                             // p == validator_identity // for a single validator identity check
-                                            && p.contains(validator_identity) 
+                                            && p.contains(validator_identity.as_str()) 
                                         {
                                             let vote_signature =
                                                 Some(inner_txn.signatures[0].clone());
                                             vote_signatures.vote_signature.push(vote_signature);
-                                        } else if aks.contains(&VOTE_PROGRAM_ID.to_string()) {
-                                            let vote_signature =
-                                                Some(inner_txn.signatures[0].clone());
-                                            vote_signatures.vote_signature.push(vote_signature);
+                                            let vote_message = Some(vote_message);
+                                            vote_signatures.vote_messages.push(vote_message);
                                         }
+                                            // } else if aks.contains(&VOTE_PROGRAM_ID.to_string()) {
+                                        //     let vote_signature =
+                                        //         Some(inner_txn.signatures[0].clone());
+                                        //     vote_signatures.vote_signature.push(vote_signature);
+                                        //     let vote_message = Some(vote_message);
+                                        //     vote_signature.vote_messages.push(vote_message);
+                                        // }
                                     }
                                     // if there's no specified vote_pubkey in config, then collect all vote signatures
                                     None => {
@@ -1310,6 +1337,8 @@ impl JsonRpcRequestProcessor {
                                             let vote_signature =
                                                 Some(inner_txn.signatures[0].clone());
                                             vote_signatures.vote_signature.push(vote_signature);
+                                            let vote_message = Some(vote_message);
+                                            vote_signatures.vote_messages.push(vote_message);
                                         }
                                     }
                                 }

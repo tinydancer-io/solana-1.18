@@ -648,6 +648,7 @@ pub struct ConfirmedBlock {
 #[serde(rename_all = "camelCase")]
 pub struct VoteSignatures {
     pub vote_signature: Vec<Option<String>>,
+    pub vote_messages: Vec<Option<Vec<u8>>>,
 }
 
 // Confirmed block with type guarantees that transaction metadata
