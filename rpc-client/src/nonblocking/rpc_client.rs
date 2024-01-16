@@ -2514,6 +2514,13 @@ impl RpcClient {
         .await
     }
 
+    // pub async fn get_account_proof(
+    //     &self,
+    //     slot: Slot,
+
+    // ) -> ClientResult<> {
+
+    // }
     /// Returns identity and transaction information about a confirmed block in the ledger.
     ///
     /// # RPC Reference

@@ -1353,6 +1353,25 @@ impl JsonRpcRequestProcessor {
         Ok(vote_signatures)
     }
 
+    // pub async fn get_account_proof(
+    //     &self,
+    //     slot: Slot,
+    //     config: Option<RpcGetAccountProofConfig>,
+    // ) -> Result<> {
+    //     let cfg = Some(RpcEncodingConfigWrapper::Current(Some(RpcBlockConfig {
+    //         encoding: Some(UiTransactionEncoding::Json),
+    //         transaction_details: Some(TransactionDetails::Full),
+    //         rewards: None,
+    //         commitment: Some(CommitmentConfig {
+    //             commitment: CommitmentLevel::Confirmed,
+    //         }),
+    //         max_supported_transaction_version: Some(0),
+    //     })));
+    //     let block = self.get_block(slot, cfg).await.unwrap();
+
+
+    // }
+
     pub async fn get_blocks_with_limit(
         &self,
         start_slot: Slot,

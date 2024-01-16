@@ -2060,6 +2060,13 @@ impl RpcClient {
         ))
     }
 
+    // pub fn get_account_proof(
+    //     &self,
+
+    // ) -> ClientResult<> {
+
+   // }
+
     pub fn get_vote_signatures_for_slot(
         &self,
         slot: Slot,

@@ -100,6 +100,13 @@ pub struct RpcGetVoteSignaturesConfig {
     pub commitment: Option<CommitmentConfig>,
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcGetAccountProofConfig {
+    #[serde(flatten)]
+    pub commitment: Option<CommitmentConfig>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum RpcLeaderScheduleConfigWrapper {
