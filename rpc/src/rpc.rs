@@ -1254,7 +1254,6 @@ impl JsonRpcRequestProcessor {
         config: Option<RpcGetVoteSignaturesConfig>,
     ) -> Result<VoteSignatures> {
         const VOTE_PROGRAM_ID: &str = "Vote111111111111111111111111111111111111111";
-        info!("harsh | enter call");
 
         // manually constructing config for `getBlock`
         let cfg = Some(RpcEncodingConfigWrapper::Current(Some(RpcBlockConfig {
@@ -1268,16 +1267,13 @@ impl JsonRpcRequestProcessor {
         })));
 
         let block = self.get_block(slot, cfg).await;
-        info!("harsh | got block {}", block.clone().unwrap().is_some());
         let mut vote_signatures: VoteSignatures = VoteSignatures::default();
 
         // info!("harsh | txn {:?}", block.clone.unwrap().unwrap().transactions.unwrap().len());
         for outer_txn in block.unwrap().unwrap().transactions.unwrap() {
             if let EncodedTransaction::Json(inner_txn) = outer_txn.transaction  {
-                    info!("harsh | match");
                     match inner_txn.message {
                         solana_transaction_status::UiMessage::Raw(message) => {
-                            info!("harsh | message");
                             let aks: HashSet<String> = message
                                 .account_keys
                                 .clone()
@@ -1352,26 +1348,6 @@ impl JsonRpcRequestProcessor {
         }
         Ok(vote_signatures)
     }
-
-    // pub async fn get_account_proof(
-    //     &self,
-    //     slot: Slot,
-    //     config: Option<RpcGetAccountProofConfig>,
-    // ) -> Result<> {
-    //     let cfg = Some(RpcEncodingConfigWrapper::Current(Some(RpcBlockConfig {
-    //         encoding: Some(UiTransactionEncoding::Json),
-    //         transaction_details: Some(TransactionDetails::Full),
-    //         rewards: None,
-    //         commitment: Some(CommitmentConfig {
-    //             commitment: CommitmentLevel::Confirmed,
-    //         }),
-    //         max_supported_transaction_version: Some(0),
-    //     })));
-    //     let block = self.get_block(slot, cfg).await.unwrap();
-
-
-    // }
-
     pub async fn get_blocks_with_limit(
         &self,
         start_slot: Slot,
