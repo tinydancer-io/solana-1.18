@@ -44,7 +44,7 @@ use {
     },
     solana_rpc_client_nonce_utils::blockhash_query::BlockhashQuery,
     solana_sdk::{
-        account::Account,
+        account::{is_executable, Account},
         account_utils::StateMut,
         bpf_loader, bpf_loader_deprecated,
         bpf_loader_upgradeable::{self, UpgradeableLoaderState},
@@ -219,7 +219,7 @@ impl ProgramSubCommands for App<'_, '_> {
                                 .required(false)
                                 .help(
                                     "Maximum length of the upgradeable program \
-                                    [default: twice the length of the original deployed program]",
+                                    [default: the length of the original deployed program]",
                                 ),
                         )
                         .arg(
@@ -300,7 +300,7 @@ impl ProgramSubCommands for App<'_, '_> {
                                 .required(false)
                                 .help(
                                     "Maximum length of the upgradeable program \
-                                    [default: twice the length of the original deployed program]",
+                                    [default: the length of the original deployed program]",
                                 ),
                         ),
                 )
@@ -1036,6 +1036,15 @@ fn get_default_program_keypair(program_location: &Option<String>) -> Keypair {
     program_keypair
 }
 
+fn is_account_executable(account: &Account) -> bool {
+    if account.owner == bpf_loader_deprecated::id() || account.owner == bpf_loader::id() {
+        account.executable
+    } else {
+        let feature_set = FeatureSet::all_enabled();
+        is_executable(account, &feature_set)
+    }
+}
+
 /// Deploy program using upgradeable loader. It also can process program upgrades
 #[allow(clippy::too_many_arguments)]
 fn process_program_deploy(
@@ -1092,7 +1101,7 @@ fn process_program_deploy(
             .into());
         }
 
-        if !account.executable {
+        if !is_account_executable(&account) {
             // Continue an initial deploy
             true
         } else if let Ok(UpgradeableLoaderState::Program {
@@ -1162,10 +1171,8 @@ fn process_program_deploy(
             );
         }
         len
-    } else if is_final {
-        program_len
     } else {
-        program_len * 2
+        program_len
     };
 
     let min_rent_exempt_program_data_balance = rpc_client.get_minimum_balance_for_rent_exemption(
@@ -2444,7 +2451,7 @@ fn complete_partial_program_init(
 ) -> Result<(Vec<Instruction>, u64), Box<dyn std::error::Error>> {
     let mut instructions: Vec<Instruction> = vec![];
     let mut balance_needed = 0;
-    if account.executable {
+    if is_account_executable(account) {
         return Err("Buffer account is already executable".into());
     }
     if account.owner != *loader_id && !system_program::check_id(&account.owner) {

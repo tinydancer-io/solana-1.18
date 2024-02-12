@@ -109,7 +109,7 @@ use {
         clock::Slot,
         epoch_schedule::MAX_LEADER_SCHEDULE_EPOCH_OFFSET,
         exit::Exit,
-        genesis_config::GenesisConfig,
+        genesis_config::{ClusterType, GenesisConfig},
         hash::Hash,
         pubkey::Pubkey,
         shred_version::compute_shred_version,
@@ -119,6 +119,7 @@ use {
     solana_send_transaction_service::send_transaction_service,
     solana_streamer::{socket::SocketAddrSpace, streamer::StakedNodes},
     solana_turbine::{self, broadcast_stage::BroadcastStageType},
+    solana_unified_scheduler_pool::DefaultSchedulerPool,
     solana_vote_program::vote_state,
     solana_wen_restart::wen_restart::wait_for_wen_restart,
     std::{
@@ -145,6 +146,7 @@ const WAIT_FOR_SUPERMAJORITY_THRESHOLD_PERCENT: u64 = 80;
 pub enum BlockVerificationMethod {
     #[default]
     BlockstoreProcessor,
+    UnifiedScheduler,
 }
 
 impl BlockVerificationMethod {
@@ -472,12 +474,12 @@ pub struct Validator {
     blockstore_metric_report_service: BlockstoreMetricReportService,
     accounts_background_service: AccountsBackgroundService,
     accounts_hash_verifier: AccountsHashVerifier,
-    turbine_quic_endpoint: Endpoint,
+    turbine_quic_endpoint: Option<Endpoint>,
     turbine_quic_endpoint_runtime: Option<TokioRuntime>,
-    turbine_quic_endpoint_join_handle: solana_turbine::quic_endpoint::AsyncTryJoinHandle,
-    repair_quic_endpoint: Endpoint,
+    turbine_quic_endpoint_join_handle: Option<solana_turbine::quic_endpoint::AsyncTryJoinHandle>,
+    repair_quic_endpoint: Option<Endpoint>,
     repair_quic_endpoint_runtime: Option<TokioRuntime>,
-    repair_quic_endpoint_join_handle: repair::quic_endpoint::AsyncTryJoinHandle,
+    repair_quic_endpoint_join_handle: Option<repair::quic_endpoint::AsyncTryJoinHandle>,
 }
 
 impl Validator {
@@ -566,9 +568,10 @@ impl Validator {
                 "ledger directory does not exist or is not accessible: {ledger_path:?}"
             ));
         }
-
         let genesis_config =
-            open_genesis_config(ledger_path, config.max_genesis_archive_unpacked_size);
+            open_genesis_config(ledger_path, config.max_genesis_archive_unpacked_size)
+                .map_err(|err| format!("Failed to open genesis config: {err}"))?;
+
         metrics_config_sanity_check(genesis_config.cluster_type)?;
 
         if let Some(expected_shred_version) = config.expected_shred_version {
@@ -607,7 +610,7 @@ impl Validator {
             &config.snapshot_config.bank_snapshots_dir,
             &config.account_snapshot_paths,
         )
-        .map_err(|err| format!("Failed to clean orphaned account snapshot directories: {err:?}"))?;
+        .map_err(|err| format!("failed to clean orphaned account snapshot directories: {err}"))?;
         timer.stop();
         info!("Cleaning orphaned account snapshot directories done. {timer}");
 
@@ -816,6 +819,24 @@ impl Validator {
         // block min prioritization fee cache should be readable by RPC, and writable by validator
         // (by both replay stage and banking stage)
         let prioritization_fee_cache = Arc::new(PrioritizationFeeCache::default());
+
+        match &config.block_verification_method {
+            BlockVerificationMethod::BlockstoreProcessor => {
+                info!("no scheduler pool is installed for block verification...");
+            }
+            BlockVerificationMethod::UnifiedScheduler => {
+                let scheduler_pool = DefaultSchedulerPool::new_dyn(
+                    config.runtime_config.log_messages_bytes_limit,
+                    transaction_status_sender.clone(),
+                    Some(replay_vote_sender.clone()),
+                    prioritization_fee_cache.clone(),
+                );
+                bank_forks
+                    .write()
+                    .unwrap()
+                    .install_scheduler_pool(scheduler_pool);
+            }
+        }
 
         let leader_schedule_cache = Arc::new(leader_schedule_cache);
         let entry_notification_sender = entry_notifier_service
@@ -1154,58 +1175,74 @@ impl Validator {
         // Outside test-validator crate, we always need a tokio runtime (and
         // the respective handle) to initialize the turbine QUIC endpoint.
         let current_runtime_handle = tokio::runtime::Handle::try_current();
-        let turbine_quic_endpoint_runtime = current_runtime_handle.is_err().then(|| {
-            tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .thread_name("solTurbineQuic")
-                .build()
-                .unwrap()
-        });
+        let turbine_quic_endpoint_runtime = (current_runtime_handle.is_err()
+            && genesis_config.cluster_type != ClusterType::MainnetBeta)
+            .then(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .thread_name("solTurbineQuic")
+                    .build()
+                    .unwrap()
+            });
         let (turbine_quic_endpoint_sender, turbine_quic_endpoint_receiver) = unbounded();
         let (
             turbine_quic_endpoint,
             turbine_quic_endpoint_sender,
             turbine_quic_endpoint_join_handle,
-        ) = solana_turbine::quic_endpoint::new_quic_endpoint(
-            turbine_quic_endpoint_runtime
-                .as_ref()
-                .map(TokioRuntime::handle)
-                .unwrap_or_else(|| current_runtime_handle.as_ref().unwrap()),
-            &identity_keypair,
-            node.sockets.tvu_quic,
-            node.info
-                .tvu(Protocol::QUIC)
-                .map_err(|err| format!("Invalid QUIC TVU address: {err:?}"))?
-                .ip(),
-            turbine_quic_endpoint_sender,
-            bank_forks.clone(),
-        )
-        .unwrap();
-
-        // Repair quic endpoint.
-        let repair_quic_endpoint_runtime = current_runtime_handle.is_err().then(|| {
-            tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .thread_name("solRepairQuic")
-                .build()
-                .unwrap()
-        });
-        let (repair_quic_endpoint, repair_quic_endpoint_sender, repair_quic_endpoint_join_handle) =
-            repair::quic_endpoint::new_quic_endpoint(
-                repair_quic_endpoint_runtime
+        ) = if genesis_config.cluster_type == ClusterType::MainnetBeta {
+            let (sender, _receiver) = tokio::sync::mpsc::channel(1);
+            (None, sender, None)
+        } else {
+            solana_turbine::quic_endpoint::new_quic_endpoint(
+                turbine_quic_endpoint_runtime
                     .as_ref()
                     .map(TokioRuntime::handle)
                     .unwrap_or_else(|| current_runtime_handle.as_ref().unwrap()),
                 &identity_keypair,
-                node.sockets.serve_repair_quic,
+                node.sockets.tvu_quic,
                 node.info
-                    .serve_repair(Protocol::QUIC)
-                    .map_err(|err| format!("Invalid QUIC serve-repair address: {err:?}"))?
+                    .tvu(Protocol::QUIC)
+                    .map_err(|err| format!("Invalid QUIC TVU address: {err:?}"))?
                     .ip(),
-                repair_quic_endpoint_sender,
+                turbine_quic_endpoint_sender,
                 bank_forks.clone(),
             )
-            .unwrap();
+            .map(|(endpoint, sender, join_handle)| (Some(endpoint), sender, Some(join_handle)))
+            .unwrap()
+        };
+
+        // Repair quic endpoint.
+        let repair_quic_endpoint_runtime = (current_runtime_handle.is_err()
+            && genesis_config.cluster_type != ClusterType::MainnetBeta)
+            .then(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .thread_name("solRepairQuic")
+                    .build()
+                    .unwrap()
+            });
+        let (repair_quic_endpoint, repair_quic_endpoint_sender, repair_quic_endpoint_join_handle) =
+            if genesis_config.cluster_type == ClusterType::MainnetBeta {
+                let (sender, _receiver) = tokio::sync::mpsc::channel(1);
+                (None, sender, None)
+            } else {
+                repair::quic_endpoint::new_quic_endpoint(
+                    repair_quic_endpoint_runtime
+                        .as_ref()
+                        .map(TokioRuntime::handle)
+                        .unwrap_or_else(|| current_runtime_handle.as_ref().unwrap()),
+                    &identity_keypair,
+                    node.sockets.serve_repair_quic,
+                    node.info
+                        .serve_repair(Protocol::QUIC)
+                        .map_err(|err| format!("Invalid QUIC serve-repair address: {err:?}"))?
+                        .ip(),
+                    repair_quic_endpoint_sender,
+                    bank_forks.clone(),
+                )
+                .map(|(endpoint, sender, join_handle)| (Some(endpoint), sender, Some(join_handle)))
+                .unwrap()
+            };
 
         let in_wen_restart = config.wen_restart_proto_path.is_some() && !waited_for_supermajority;
         let tower = match process_blockstore.process_to_create_tower() {
@@ -1223,13 +1260,18 @@ impl Validator {
         };
         let last_vote = tower.last_vote();
 
+        let outstanding_repair_requests =
+            Arc::<RwLock<repair::repair_service::OutstandingShredRepairs>>::default();
+        let cluster_slots =
+            Arc::new(crate::cluster_slots_service::cluster_slots::ClusterSlots::default());
+
         let tvu = Tvu::new(
             vote_account,
             authorized_voter_keypairs,
             &bank_forks,
             &cluster_info,
             TvuSockets {
-                repair: node.sockets.repair,
+                repair: node.sockets.repair.try_clone().unwrap(),
                 retransmit: node.sockets.retransmit_sockets,
                 fetch: node.sockets.tvu,
                 ancestor_hashes_requests: node.sockets.ancestor_hashes_requests,
@@ -1275,6 +1317,8 @@ impl Validator {
             turbine_quic_endpoint_sender.clone(),
             turbine_quic_endpoint_receiver,
             repair_quic_endpoint_sender,
+            outstanding_repair_requests.clone(),
+            cluster_slots.clone(),
         )?;
 
         if in_wen_restart {
@@ -1351,6 +1395,9 @@ impl Validator {
             vote_account: *vote_account,
             repair_whitelist: config.repair_whitelist.clone(),
             notifies: key_notifies,
+            repair_socket: Arc::new(node.sockets.repair),
+            outstanding_repair_requests,
+            cluster_slots,
         });
 
         Ok(Self {
@@ -1505,14 +1552,18 @@ impl Validator {
         }
 
         self.gossip_service.join().expect("gossip_service");
-        repair::quic_endpoint::close_quic_endpoint(&self.repair_quic_endpoint);
+        if let Some(repair_quic_endpoint) = &self.repair_quic_endpoint {
+            repair::quic_endpoint::close_quic_endpoint(repair_quic_endpoint);
+        }
         self.serve_repair_service
             .join()
             .expect("serve_repair_service");
-        self.repair_quic_endpoint_runtime
-            .map(|runtime| runtime.block_on(self.repair_quic_endpoint_join_handle))
-            .transpose()
-            .unwrap();
+        if let Some(repair_quic_endpoint_join_handle) = self.repair_quic_endpoint_join_handle {
+            self.repair_quic_endpoint_runtime
+                .map(|runtime| runtime.block_on(repair_quic_endpoint_join_handle))
+                .transpose()
+                .unwrap();
+        };
         self.stats_reporter_service
             .join()
             .expect("stats_reporter_service");
@@ -1525,13 +1576,17 @@ impl Validator {
         self.accounts_hash_verifier
             .join()
             .expect("accounts_hash_verifier");
-        solana_turbine::quic_endpoint::close_quic_endpoint(&self.turbine_quic_endpoint);
+        if let Some(turbine_quic_endpoint) = &self.turbine_quic_endpoint {
+            solana_turbine::quic_endpoint::close_quic_endpoint(turbine_quic_endpoint);
+        }
         self.tpu.join().expect("tpu");
         self.tvu.join().expect("tvu");
-        self.turbine_quic_endpoint_runtime
-            .map(|runtime| runtime.block_on(self.turbine_quic_endpoint_join_handle))
-            .transpose()
-            .unwrap();
+        if let Some(turbine_quic_endpoint_join_handle) = self.turbine_quic_endpoint_join_handle {
+            self.turbine_quic_endpoint_runtime
+                .map(|runtime| runtime.block_on(turbine_quic_endpoint_join_handle))
+                .transpose()
+                .unwrap();
+        }
         self.completed_data_sets_service
             .join()
             .expect("completed_data_sets_service");
@@ -1721,7 +1776,8 @@ fn load_blockstore(
 > {
     info!("loading ledger from {:?}...", ledger_path);
     *start_progress.write().unwrap() = ValidatorStartProgress::LoadingLedger;
-    let genesis_config = open_genesis_config(ledger_path, config.max_genesis_archive_unpacked_size);
+    let genesis_config = open_genesis_config(ledger_path, config.max_genesis_archive_unpacked_size)
+        .map_err(|err| format!("Failed to open genesis config: {err}"))?;
 
     // This needs to be limited otherwise the state in the VoteAccount data
     // grows too large

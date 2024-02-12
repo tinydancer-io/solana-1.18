@@ -4,9 +4,10 @@ use {
     crossbeam_channel::{unbounded, Receiver},
     gag::BufferRedirect,
     log::*,
+    rand::seq::IteratorRandom,
     serial_test::serial,
     solana_accounts_db::{
-        accounts_db::create_accounts_run_and_snapshot_dirs, hardened_unpack::open_genesis_config,
+        hardened_unpack::open_genesis_config, utils::create_accounts_run_and_snapshot_dirs,
     },
     solana_client::thin_client::ThinClient,
     solana_core::{
@@ -15,7 +16,7 @@ use {
         },
         optimistic_confirmation_verifier::OptimisticConfirmationVerifier,
         replay_stage::DUPLICATE_THRESHOLD,
-        validator::ValidatorConfig,
+        validator::{BlockVerificationMethod, ValidatorConfig},
     },
     solana_download_utils::download_snapshot_archive,
     solana_entry::entry::create_ticks,
@@ -239,10 +240,7 @@ fn test_local_cluster_signature_subscribe() {
     );
 
     let (mut sig_subscribe_client, receiver) = PubsubClient::signature_subscribe(
-        &format!(
-            "ws://{}",
-            &non_bootstrap_info.rpc_pubsub().unwrap().to_string()
-        ),
+        &format!("ws://{}", non_bootstrap_info.rpc_pubsub().unwrap()),
         &transaction.signatures[0],
         Some(RpcSignatureSubscribeConfig {
             commitment: Some(CommitmentConfig::processed()),
@@ -2198,7 +2196,7 @@ fn create_snapshot_to_hard_fork(
         ..ProcessOptions::default()
     };
     let ledger_path = blockstore.ledger_path();
-    let genesis_config = open_genesis_config(ledger_path, u64::max_value());
+    let genesis_config = open_genesis_config(ledger_path, u64::max_value()).unwrap();
     let snapshot_config = create_simple_snapshot_config(ledger_path);
     let (bank_forks, ..) = bank_forks_utils::load(
         &genesis_config,
@@ -2385,7 +2383,7 @@ fn test_hard_fork_with_gap_in_roots() {
         .reversed_rooted_slot_iterator(common_root)
         .unwrap()
         .collect::<Vec<_>>();
-    // artifically restore the forcibly purged genesis only for the validator A just for the sake of
+    // artificially restore the forcibly purged genesis only for the validator A just for the sake of
     // the final assertions.
     slots_a.push(genesis_slot);
     roots_a.push(genesis_slot);
@@ -2742,6 +2740,9 @@ fn test_oc_bad_signatures() {
             }
         },
         voter_thread_sleep_ms as u64,
+        cluster.validators.len().saturating_sub(1),
+        0,
+        0,
     );
 
     let (mut block_subscribe_client, receiver) = PubsubClient::block_subscribe(
@@ -2928,24 +2929,26 @@ fn setup_transfer_scan_threads(
                     .get_latest_blockhash_with_commitment(CommitmentConfig::processed())
                     .unwrap();
                 for i in 0..starting_keypairs_.len() {
-                    client
-                        .async_transfer(
-                            1,
-                            &starting_keypairs_[i],
-                            &target_keypairs_[i].pubkey(),
-                            blockhash,
-                        )
-                        .unwrap();
+                    let result = client.async_transfer(
+                        1,
+                        &starting_keypairs_[i],
+                        &target_keypairs_[i].pubkey(),
+                        blockhash,
+                    );
+                    if result.is_err() {
+                        debug!("Failed in transfer for starting keypair: {:?}", result);
+                    }
                 }
                 for i in 0..starting_keypairs_.len() {
-                    client
-                        .async_transfer(
-                            1,
-                            &target_keypairs_[i],
-                            &starting_keypairs_[i].pubkey(),
-                            blockhash,
-                        )
-                        .unwrap();
+                    let result = client.async_transfer(
+                        1,
+                        &target_keypairs_[i],
+                        &starting_keypairs_[i].pubkey(),
+                        blockhash,
+                    );
+                    if result.is_err() {
+                        debug!("Failed in transfer for starting keypair: {:?}", result);
+                    }
                 }
             }
         })
@@ -3740,6 +3743,18 @@ fn test_kill_partition_switch_threshold_progress() {
 #[serial]
 #[allow(unused_attributes)]
 fn test_duplicate_shreds_broadcast_leader() {
+    run_duplicate_shreds_broadcast_leader(true);
+}
+#[test]
+#[serial]
+#[ignore]
+#[allow(unused_attributes)]
+fn test_duplicate_shreds_broadcast_leader_ancestor_hashes() {
+    run_duplicate_shreds_broadcast_leader(false);
+}
+
+fn run_duplicate_shreds_broadcast_leader(vote_on_duplicate: bool) {
+    solana_logger::setup_with_default(RUST_LOG_FILTER);
     // Create 4 nodes:
     // 1) Bad leader sending different versions of shreds to both of the other nodes
     // 2) 1 node who's voting behavior in gossip
@@ -3790,11 +3805,13 @@ fn test_duplicate_shreds_broadcast_leader() {
     // for the partition.
     assert!(partition_node_stake < our_node_stake && partition_node_stake < good_node_stake);
 
+    let (duplicate_slot_sender, duplicate_slot_receiver) = unbounded();
+
     // 1) Set up the cluster
     let (mut cluster, validator_keys) = test_faulty_node(
         BroadcastStageType::BroadcastDuplicates(BroadcastDuplicatesConfig {
             partition: ClusterPartition::Stake(partition_node_stake),
-            duplicate_slot_sender: None,
+            duplicate_slot_sender: Some(duplicate_slot_sender),
         }),
         node_stakes,
         None,
@@ -3836,27 +3853,23 @@ fn test_duplicate_shreds_broadcast_leader() {
         {
             let node_keypair = node_keypair.insecure_clone();
             let vote_keypair = vote_keypair.insecure_clone();
-            let mut max_vote_slot = 0;
             let mut gossip_vote_index = 0;
+            let mut duplicate_slots = vec![];
             move |latest_vote_slot, leader_vote_tx, parsed_vote, cluster_info| {
                 info!("received vote for {}", latest_vote_slot);
                 // Add to EpochSlots. Mark all slots frozen between slot..=max_vote_slot.
-                if latest_vote_slot > max_vote_slot {
-                    let new_epoch_slots: Vec<Slot> =
-                        (max_vote_slot + 1..latest_vote_slot + 1).collect();
-                    info!(
-                        "Simulating epoch slots from our node: {:?}",
-                        new_epoch_slots
-                    );
-                    cluster_info.push_epoch_slots(&new_epoch_slots);
-                    max_vote_slot = latest_vote_slot;
-                }
+                let new_epoch_slots: Vec<Slot> = (0..latest_vote_slot + 1).collect();
+                info!(
+                    "Simulating epoch slots from our node: {:?}",
+                    new_epoch_slots
+                );
+                cluster_info.push_epoch_slots(&new_epoch_slots);
 
-                // Only vote on even slots. Note this may violate lockouts if the
-                // validator started voting on a different fork before we could exit
-                // it above.
+                for slot in duplicate_slot_receiver.try_iter() {
+                    duplicate_slots.push(slot);
+                }
                 let vote_hash = parsed_vote.hash();
-                if latest_vote_slot % 2 == 0 {
+                if vote_on_duplicate || !duplicate_slots.contains(&latest_vote_slot) {
                     info!(
                         "Simulating vote from our node on slot {}, hash {}",
                         latest_vote_slot, vote_hash
@@ -3894,6 +3907,9 @@ fn test_duplicate_shreds_broadcast_leader() {
             }
         },
         voter_thread_sleep_ms as u64,
+        cluster.validators.len().saturating_sub(1),
+        5000, // Refresh if 5 seconds of inactivity
+        5,    // Refresh the past 5 votes
     );
 
     // 4) Check that the cluster is making progress
@@ -4288,7 +4304,7 @@ fn test_leader_failure_4() {
 //
 // Validator A (60%)
 // Validator B (40%)
-//                                  / --- 10 --- [..] --- 16 (B is voting, due to network issues is initally not able to see the other fork at all)
+//                                  / --- 10 --- [..] --- 16 (B is voting, due to network issues is initially not able to see the other fork at all)
 //                                 /
 // 1 - 2 - 3 - 4 - 5 - 6 - 7 - 8 - 9 (A votes 1 - 9 votes are landing normally. B does the same however votes are not landing)
 //                                 \
@@ -4484,7 +4500,7 @@ fn test_slot_hash_expiry() {
     );
 }
 
-// This test simulates a case where a leader sends a duplicate block with different ancestory. One
+// This test simulates a case where a leader sends a duplicate block with different ancestry. One
 // version builds off of the rooted path, however the other version builds off a pruned branch. The
 // validators that receive the pruned version will need to repair in order to continue, which
 // requires an ancestor hashes repair.
@@ -4513,7 +4529,7 @@ fn test_slot_hash_expiry() {
 //    reached as minority cannot pass threshold otherwise).
 // 4) Let minority produce forks on pruned forks until out of leader slots then kill.
 // 5) Truncate majority ledger past fork slot so it starts building off of fork slot.
-// 6) Restart majority and wait untill it starts producing blocks on main fork and roots something
+// 6) Restart majority and wait until it starts producing blocks on main fork and roots something
 //    past the fork slot.
 // 7) Construct our ledger by copying majority ledger and copying blocks from minority for the pruned path.
 // 8) In our node's ledger, change the parent of the latest slot in majority fork to be the latest
@@ -5453,6 +5469,44 @@ fn test_duplicate_shreds_switch_failure() {
         16,
         "test_duplicate_shreds_switch_failure",
         SocketAddrSpace::Unspecified,
+    );
+}
+
+#[test]
+#[serial]
+fn test_randomly_mixed_block_verification_methods_between_bootstrap_and_not() {
+    // tailored logging just to see two block verification methods are working correctly
+    solana_logger::setup_with_default(
+        "solana_metrics::metrics=warn,\
+         solana_core=warn,\
+         solana_runtime::installed_scheduler_pool=trace,\
+         solana_ledger::blockstore_processor=debug,\
+         info",
+    );
+
+    let num_nodes = 2;
+    let mut config = ClusterConfig::new_with_equal_stakes(
+        num_nodes,
+        DEFAULT_CLUSTER_LAMPORTS,
+        DEFAULT_NODE_STAKE,
+    );
+
+    // Randomly switch to use unified scheduler
+    config
+        .validator_configs
+        .iter_mut()
+        .choose(&mut rand::thread_rng())
+        .unwrap()
+        .block_verification_method = BlockVerificationMethod::UnifiedScheduler;
+
+    let local = LocalCluster::new(&mut config, SocketAddrSpace::Unspecified);
+    cluster_tests::spend_and_verify_all_nodes(
+        &local.entry_point_info,
+        &local.funding_keypair,
+        num_nodes,
+        HashSet::new(),
+        SocketAddrSpace::Unspecified,
+        &local.connection_cache,
     );
 }
 
