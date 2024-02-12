@@ -6910,6 +6910,7 @@ dependencies = [
  "serial_test",
  "soketto",
  "solana-account-decoder",
+ "solana-account-proof",
  "solana-accounts-db",
  "solana-client",
  "solana-entry",

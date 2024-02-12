@@ -1,5 +1,6 @@
 //! The `rpc` module implements the Solana RPC interface.
 
+// use solana_account_proof::Update;
 use solana_program::{instruction::CompiledInstruction, message::Message};
 use solana_transaction_status::{EncodedTransaction, TransactionDetails, VoteSignatures};
 use {
@@ -1348,6 +1349,52 @@ impl JsonRpcRequestProcessor {
         }
         Ok(vote_signatures)
     }
+<<<<<<< HEAD
+=======
+
+   //  pub async fn get_account_proof(
+   //      &self,
+   //      slot: Slot,
+   //      config: Option<RpcGetAccountProofConfig>,
+   //  ) -> Result<Update> {
+   //
+   //
+   // let mut raw_slot_account_accumulator: AccountHashAccumulator = HashMap::new();
+   //  let mut processed_slot_account_accumulator: AccountHashAccumulator = HashMap::new();
+   //
+   //  let mut raw_transaction_accumulator: TransactionSigAccumulator = HashMap::new();
+   //  let mut processed_transaction_accumulator: TransactionSigAccumulator = HashMap::new();
+   //
+   //  let mut raw_vote_accumulator: VoteAccumulator = HashMap::new();
+   //  let mut processed_vote_accumulator: VoteAccumulator = HashMap::new();
+   //
+   //  let mut slothash_accumulator: SlotHashProofAccumulator = HashMap::new();
+   //
+   //  let mut pending_updates: HashMap<Hash,Update> = HashMap::new();
+   //
+   //  let mut block_accumulator: HashMap<u64, BlockInfo> = HashMap::new();
+   //
+   //
+   //      let cfg = Some(RpcEncodingConfigWrapper::Current(Some(RpcBlockConfig {
+   //          encoding: Some(UiTransactionEncoding::Json),
+   //          transaction_details: Some(TransactionDetails::Full),
+   //          rewards: None,
+   //          commitment: Some(CommitmentConfig {
+   //              commitment: CommitmentLevel::Confirmed,
+   //          }),
+   //          max_supported_transaction_version: Some(0),
+   //      })));
+   //      let block = self.get_block(slot, cfg).await.unwrap();
+   //
+   //          let block_hash = block.unwrap().blockhash;
+   //          let parent_bankhash = block.unwrap().previous_blockhash;
+   //
+   //
+   //      Ok(())
+   //
+   //  }
+
+>>>>>>> 366d53926 (fixes)
     pub async fn get_blocks_with_limit(
         &self,
         start_slot: Slot,

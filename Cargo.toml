@@ -6,7 +6,6 @@ split-debuginfo = "packed"
 [workspace]
 members = [
     "account-decoder",
-    "account-proof",
     "accounts-bench",
     "accounts-cluster-bench",
     "accounts-db",

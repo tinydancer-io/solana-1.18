@@ -462,6 +462,7 @@ pub fn main() {
     let default_args = DefaultArgs::new();
     let solana_version = solana_version::version!();
     let cli_app = app(solana_version, &default_args);
+    // println!("DEBUG: {:?}",cli_app);
     let matches = cli_app.get_matches();
     warn_for_deprecated_arguments(&matches);
 
