@@ -5246,7 +5246,7 @@ dependencies = [
 
 [[package]]
 name = "solana-account-proof"
-version = "1.18.0"
+version = "1.18.1"
 dependencies = [
  "anyhow",
  "blake3",
