@@ -1442,8 +1442,6 @@ impl JsonRpcRequestProcessor {
         }
         Ok(vote_signatures)
     }
-<<<<<<< HEAD
-=======
 
    //  pub async fn get_account_proof(
    //      &self,
@@ -1487,7 +1485,6 @@ impl JsonRpcRequestProcessor {
    //
    //  }
 
->>>>>>> 366d53926 (fixes)
     pub async fn get_blocks_with_limit(
         &self,
         start_slot: Slot,
