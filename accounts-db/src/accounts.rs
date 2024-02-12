@@ -636,18 +636,8 @@ impl Accounts {
     ) {
         let keys: Vec<_> = txs
             .zip(results)
-            .filter_map(|(tx, res)| match res {
-                Err(TransactionError::AccountLoadedTwice)
-                | Err(TransactionError::AccountInUse)
-                | Err(TransactionError::SanitizeFailure)
-                | Err(TransactionError::TooManyAccountLocks)
-                | Err(TransactionError::WouldExceedMaxBlockCostLimit)
-                | Err(TransactionError::WouldExceedMaxVoteCostLimit)
-                | Err(TransactionError::WouldExceedMaxAccountCostLimit)
-                | Err(TransactionError::WouldExceedAccountDataBlockLimit)
-                | Err(TransactionError::WouldExceedAccountDataTotalLimit) => None,
-                _ => Some(tx.get_account_locks_unchecked()),
-            })
+            .filter(|(_, res)| res.is_ok())
+            .map(|(tx, _)| tx.get_account_locks_unchecked())
             .collect();
         let mut account_locks = self.account_locks.lock().unwrap();
         debug!("bank unlock accounts");
@@ -2108,7 +2098,7 @@ mod tests {
         let accounts = Accounts::new(Arc::new(accounts_db));
 
         /* This test assumes pubkey0 < pubkey1 < pubkey2.
-         * But the keys created with new_unique() does not gurantee this
+         * But the keys created with new_unique() does not guarantee this
          * order because of the endianness.  new_unique() calls add 1 at each
          * key generaration as the little endian integer.  A pubkey stores its
          * value in a 32-byte array bytes, and its eq-partial trait considers

@@ -175,6 +175,10 @@ pub struct StreamStats {
     pub(crate) connection_setup_error_locally_closed: AtomicUsize,
     pub(crate) connection_removed: AtomicUsize,
     pub(crate) connection_remove_failed: AtomicUsize,
+    pub(crate) throttled_streams: AtomicUsize,
+    pub(crate) stream_load_ema: AtomicUsize,
+    pub(crate) stream_load_ema_overflow: AtomicUsize,
+    pub(crate) stream_load_capacity_overflow: AtomicUsize,
 }
 
 impl StreamStats {
@@ -403,6 +407,26 @@ impl StreamStats {
             (
                 "stream_read_timeouts",
                 self.total_stream_read_timeouts.swap(0, Ordering::Relaxed),
+                i64
+            ),
+            (
+                "throttled_streams",
+                self.throttled_streams.swap(0, Ordering::Relaxed),
+                i64
+            ),
+            (
+                "stream_load_ema",
+                self.stream_load_ema.load(Ordering::Relaxed),
+                i64
+            ),
+            (
+                "stream_load_ema_overflow",
+                self.stream_load_ema_overflow.load(Ordering::Relaxed),
+                i64
+            ),
+            (
+                "stream_load_capacity_overflow",
+                self.stream_load_capacity_overflow.load(Ordering::Relaxed),
                 i64
             ),
         );
