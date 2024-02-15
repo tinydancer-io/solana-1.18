@@ -186,7 +186,6 @@ pub fn execute_batch(
         .zip(batch.sanitized_transactions())
         .filter_map(|(execution_result, tx)| execution_result.was_executed().then_some(tx))
         .collect_vec();
-    info!("is_sender_some: {:?}", transaction_status_sender.is_some());
     if let Some(transaction_status_sender) = transaction_status_sender {
         let transactions = batch.sanitized_transactions().to_vec();
         let post_token_balances = if record_token_balances {
