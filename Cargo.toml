@@ -308,7 +308,7 @@ smpl_jwt = "0.7.1"
 socket2 = "0.5.5"
 soketto = "0.7"
 solana-account-decoder = { path = "account-decoder", version = "=1.18.1" }
-solana-account-proof = { path = "account-proof", version = "=1.18.1" }
+# solana-account-proof = { path = "account-proof", version = "=1.18.1" }
 solana-accounts-db = { path = "accounts-db", version = "=1.18.1" }
 solana-address-lookup-table-program = { path = "programs/address-lookup-table", version = "=1.18.1" }
 solana-banks-client = { path = "banks-client", version = "=1.18.1" }

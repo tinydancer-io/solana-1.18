@@ -24,7 +24,7 @@ solana-transaction-status = { workspace = true }
 solana-version = { workspace = true }
 spl-token-2022 = { workspace = true, features = ["no-entrypoint"] }
 thiserror = { workspace = true }
-solana-account-proof={workspace=true}
+# solana-account-proof={workspace=true}
 [dev-dependencies]
 
 [package.metadata.docs.rs]

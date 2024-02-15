@@ -5245,20 +5245,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-account-proof"
-version = "1.18.1"
-dependencies = [
- "anyhow",
- "blake3",
- "borsh 1.2.1",
- "rand 0.8.5",
- "rayon",
- "solana-accounts-db",
- "solana-runtime",
- "solana-sdk",
-]
-
-[[package]]
 name = "solana-accounts-bench"
 version = "1.18.1"
 dependencies = [
@@ -6891,7 +6877,6 @@ dependencies = [
  "serial_test",
  "soketto",
  "solana-account-decoder",
- "solana-account-proof",
  "solana-accounts-db",
  "solana-client",
  "solana-entry",
@@ -6969,7 +6954,6 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "solana-account-decoder",
- "solana-account-proof",
  "solana-sdk",
  "solana-transaction-status",
  "solana-version",

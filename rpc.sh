@@ -1,8 +1,9 @@
 #! /bin/bash
 MG=5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d
 TG=4uhcVJyU9pJkvQyS88uRDiswHXSCkY3zQawwpjk2NsNY
+# valgrind --leak-check=full --main-stacksize=10000000 --num-callers=500 
 
-valgrind --leak-check=full --main-stacksize=10000000 --num-callers=500 target/debug/solana-validator \
+exec target/debug/solana-validator \
 --identity keypair.json \
 --entrypoint entrypoint.testnet.solana.com:8001 \
 --entrypoint entrypoint2.testnet.solana.com:8001 \
@@ -25,8 +26,7 @@ valgrind --leak-check=full --main-stacksize=10000000 --num-callers=500 target/de
 --rpc-send-service-max-retries 3 \
 --rpc-send-retry-ms 2000 \
 --full-rpc-api \
---no-snapshot-fetch \
---accounts-index-memory-limit-mb 1000 \
+--accounts-index-memory-limit-mb 250 \
 --no-poh-speed-test \
 --only-known-rpc \
 --accountsdb-plugin-config /root/solana-proofs/config.json \
