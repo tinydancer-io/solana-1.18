@@ -7779,7 +7779,7 @@ dependencies = [
  "merlin",
  "num-derive 0.4.1",
  "num-traits",
- "rand 0.7.3",
+ "rand 0.8.5",
  "serde",
  "serde_json",
  "sha3 0.9.1",
