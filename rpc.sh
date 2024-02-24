@@ -3,7 +3,7 @@ MG=5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d
 TG=4uhcVJyU9pJkvQyS88uRDiswHXSCkY3zQawwpjk2NsNY
 # valgrind --leak-check=full --main-stacksize=10000000 --num-callers=500 
 
-exec target/debug/solana-validator \
+exec target/release/solana-validator \
 --identity keypair.json \
 --entrypoint entrypoint.testnet.solana.com:8001 \
 --entrypoint entrypoint2.testnet.solana.com:8001 \
