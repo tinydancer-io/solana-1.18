@@ -214,7 +214,7 @@ pub trait RpcSolPubSub {
         meta: Option<Self::Metadata>,
         id: PubSubSubscriptionId,
     ) -> Result<bool>;
-    
+
     // Subscribe to block data and content
     #[pubsub(subscription = "blockNotification", subscribe, name = "blockSubscribe")]
     fn block_subscribe(
@@ -349,7 +349,7 @@ mod internal {
         
         //Get series of epoch updates with vote accounts of nodes
         #[rpc(name = "epochsUpdatesSubscribe")]
-        fn epoch_updates_subscribe(&self) -> Result<SubscriptionId>;
+        fn epochs_updates_subscribe(&self) -> Result<SubscriptionId>;
 
         // Unsubscribe from epoch updates notification subscription.
         #[rpc(name = "epochsUpdatesUnsubscribe")]
@@ -564,7 +564,7 @@ impl RpcSolPubSubInternal for RpcSolPubSubImpl {
         self.unsubscribe(id)
     }
 
-    fn epoch_updates_subscribe(&self) -> Result<SubscriptionId> {
+    fn epochs_updates_subscribe(&self) -> Result<SubscriptionId> {
         self.subscribe(SubscriptionParams::EpochUpdates)
     }
 
