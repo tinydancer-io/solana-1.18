@@ -837,7 +837,7 @@ impl PubsubClient {
 
         Ok(PubsubClientSubscription {
             message_type: PhantomData,
-            operation: "epochUpdates",
+            operation: "epochsUpdates",
             socket,
             subscription_id,
             t_cleanup: Some(t_cleanup),

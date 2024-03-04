@@ -341,7 +341,6 @@ mod internal {
         // Get series of updates for all slots
         #[rpc(name = "slotsUpdatesSubscribe")]
         fn slots_updates_subscribe(&self) -> Result<SubscriptionId>;
-
         
         // Unsubscribe from slots updates notification subscription.
         #[rpc(name = "slotsUpdatesUnsubscribe")]
