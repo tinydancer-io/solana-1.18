@@ -3,11 +3,7 @@ use {
     serde::{Deserialize, Deserializer, Serialize, Serializer},
     solana_account_decoder::{parse_token::UiTokenAmount, UiAccount},
     solana_sdk::{
-        clock::{Epoch, Slot, UnixTimestamp},
-        fee_calculator::{FeeCalculator, FeeRateGovernor},
-        hash::Hash,
-        inflation::Inflation,
-        transaction::{Result, TransactionError},
+        clock::{Epoch, Slot, UnixTimestamp}, fee_calculator::{FeeCalculator, FeeRateGovernor}, hash::Hash, inflation::Inflation, transaction::{Result, TransactionError}
     },
     solana_transaction_status::{
         ConfirmedTransactionStatusWithSignature, TransactionConfirmationStatus, UiConfirmedBlock,
@@ -258,6 +254,21 @@ impl SlotUpdate {
             Self::Root { slot, .. } => *slot,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct EpochUpdates {
+    pub epoch: Epoch,
+    pub absolute_slot: u64,
+    pub node_id_to_vote_accounts: HashMap<String,  TotalNodeVoteAccounts>,
+}
+
+#[derive(Clone, Serialize, Debug, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TotalNodeVoteAccounts {
+    pub vote_accounts: Vec<String>,
+    pub total_stake: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

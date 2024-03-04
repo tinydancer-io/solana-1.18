@@ -9,22 +9,17 @@
 //! BankNotification::NewRootedChain --> SlotNotification::Root for the roots in the chain.
 
 use {
-    crate::rpc_subscriptions::RpcSubscriptions,
-    crossbeam_channel::{Receiver, RecvTimeoutError, Sender},
-    solana_rpc_client_api::response::{SlotTransactionStats, SlotUpdate},
-    solana_runtime::{
-        bank::Bank, bank_forks::BankForks, prioritization_fee_cache::PrioritizationFeeCache,
-    },
-    solana_sdk::{clock::Slot, timing::timestamp},
-    std::{
-        collections::HashSet,
+    crate::rpc_subscriptions::RpcSubscriptions, crossbeam_channel::{Receiver, RecvTimeoutError, Sender}, solana_client::rpc_response::{EpochUpdates, TotalNodeVoteAccounts}, solana_rpc_client_api::response::{SlotTransactionStats, SlotUpdate}, solana_runtime::{
+        bank::{epoch_accounts_hash_utils::is_enabled_this_epoch, Bank}, bank_forks::BankForks, prioritization_fee_cache::PrioritizationFeeCache,
+    }, solana_sdk::{clock::Slot, timing::timestamp}, std::{
+        collections::{HashMap, HashSet},
         sync::{
             atomic::{AtomicBool, Ordering},
             Arc, RwLock,
         },
         thread::{self, Builder, JoinHandle},
         time::Duration,
-    },
+    }
 };
 
 pub struct OptimisticallyConfirmedBank {
@@ -190,6 +185,33 @@ impl OptimisticallyConfirmedBankTracker {
                     bank.slot()
                 );
                 subscriptions.notify_gossip_subscribers(bank.slot());
+
+                if is_enabled_this_epoch(bank) {
+                    let handle = bank.epoch_stakes(bank.epoch()).unwrap().node_id_to_vote_accounts();
+                    let mut new_map = HashMap::with_capacity(handle.len());
+
+                    for (k, v) in handle.iter() {
+                        let k = k.to_string();
+                        let vote_accounts_strings = v
+                            .vote_accounts
+                            .iter()
+                            .map(|pubkey| pubkey.to_string())
+                            .collect::<Vec<String>>();
+            
+                        let node_vote_accounts = TotalNodeVoteAccounts {
+                            vote_accounts: vote_accounts_strings,
+                            total_stake: v.total_stake,
+                        };
+                        new_map.insert(k, node_vote_accounts);
+                    }
+                    
+                    subscriptions.notify_epoch_updates(EpochUpdates {
+                        epoch: bank.epoch(),
+                        absolute_slot: bank.slot(),
+                        node_id_to_vote_accounts: new_map,
+                    });
+                }
+            
                 *last_notified_confirmed_slot = bank.slot();
                 Self::notify_slot_status(
                     slot_notification_subscribers,

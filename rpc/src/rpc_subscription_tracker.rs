@@ -48,6 +48,7 @@ pub enum SubscriptionParams {
     Signature(SignatureSubscriptionParams),
     Slot,
     SlotsUpdates,
+    Epoch,
     Root,
     Vote,
 }
@@ -61,6 +62,7 @@ impl SubscriptionParams {
             SubscriptionParams::Signature(_) => "signatureNotification",
             SubscriptionParams::Slot => "slotNotification",
             SubscriptionParams::SlotsUpdates => "slotsUpdatesNotification",
+            SubscriptionParams::Epoch => "epochNotification",
             SubscriptionParams::Block(_) => "blockNotification",
             SubscriptionParams::Root => "rootNotification",
             SubscriptionParams::Vote => "voteNotification",
@@ -78,6 +80,7 @@ impl SubscriptionParams {
             | SubscriptionParams::SlotsUpdates
             | SubscriptionParams::Root
             | SubscriptionParams::Vote => None,
+            SubscriptionParams::Epoch => None,
         }
     }
 
@@ -92,6 +95,7 @@ impl SubscriptionParams {
             | SubscriptionParams::Slot
             | SubscriptionParams::SlotsUpdates
             | SubscriptionParams::Vote => return false,
+            SubscriptionParams::Epoch => return false,
         };
         !commitment.is_confirmed()
     }
@@ -107,6 +111,7 @@ impl SubscriptionParams {
             | SubscriptionParams::Slot
             | SubscriptionParams::SlotsUpdates
             | SubscriptionParams::Vote => return false,
+            SubscriptionParams::Epoch => return false,
         };
         commitment.is_confirmed()
     }

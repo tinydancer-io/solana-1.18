@@ -11,38 +11,24 @@ use {
             SignatureSubscriptionParams, SubscriptionControl, SubscriptionId, SubscriptionInfo,
             SubscriptionParams, SubscriptionsTracker,
         },
-    },
-    crossbeam_channel::{Receiver, RecvTimeoutError, SendError, Sender},
-    itertools::Either,
-    rayon::prelude::*,
-    serde::Serialize,
-    solana_account_decoder::{parse_token::is_known_spl_token_id, UiAccount, UiAccountEncoding},
-    solana_ledger::{blockstore::Blockstore, get_tmp_ledger_path},
-    solana_measure::measure::Measure,
-    solana_rayon_threadlimit::get_thread_count,
-    solana_rpc_client_api::response::{
+    }, crossbeam_channel::{Receiver, RecvTimeoutError, SendError, Sender}, itertools::Either, rayon::prelude::*, serde::Serialize, solana_account_decoder::{parse_token::is_known_spl_token_id, UiAccount, UiAccountEncoding}, solana_client::rpc_response::EpochUpdates, solana_ledger::{blockstore::Blockstore, get_tmp_ledger_path}, solana_measure::measure::Measure, solana_rayon_threadlimit::get_thread_count, solana_rpc_client_api::response::{
         ProcessedSignatureResult, ReceivedSignatureResult, Response as RpcResponse, RpcBlockUpdate,
         RpcBlockUpdateError, RpcKeyedAccount, RpcLogsResponse, RpcResponseContext,
         RpcSignatureResult, RpcVote, SlotInfo, SlotUpdate,
-    },
-    solana_runtime::{
+    }, solana_runtime::{
         bank::{Bank, TransactionLogInfo},
         bank_forks::BankForks,
         commitment::{BlockCommitmentCache, CommitmentSlots},
-    },
-    solana_sdk::{
+    }, solana_sdk::{
         account::{AccountSharedData, ReadableAccount},
         clock::Slot,
         pubkey::Pubkey,
         signature::Signature,
         timing::timestamp,
         transaction,
-    },
-    solana_transaction_status::{
+    }, solana_transaction_status::{
         BlockEncodingOptions, ConfirmedBlock, EncodeError, VersionedConfirmedBlock,
-    },
-    solana_vote::vote_transaction::VoteTransaction,
-    std::{
+    }, solana_vote::vote_transaction::VoteTransaction, std::{
         cell::RefCell,
         collections::{HashMap, VecDeque},
         io::Cursor,
@@ -53,8 +39,7 @@ use {
         },
         thread::{Builder, JoinHandle},
         time::{Duration, Instant},
-    },
-    tokio::sync::broadcast,
+    }, tokio::sync::broadcast
 };
 
 const RECEIVE_DELAY_MILLIS: u64 = 100;
@@ -99,6 +84,7 @@ pub enum NotificationEntry {
     Bank(CommitmentSlots),
     Gossip(Slot),
     SignaturesReceived((Slot, Vec<Signature>)),
+    EpochUpdates(EpochUpdates),
     Subscribed(SubscriptionParams, SubscriptionId),
     Unsubscribed(SubscriptionParams, SubscriptionId),
 }
@@ -119,6 +105,9 @@ impl std::fmt::Debug for NotificationEntry {
                 write!(f, "SignaturesReceived({slot_signatures:?})")
             }
             NotificationEntry::Gossip(slot) => write!(f, "Gossip({slot:?})"),
+            NotificationEntry::EpochUpdates(epoch_updates) => {
+                write!(f, "EpochUpdates({epoch_updates:?})")
+            }
             NotificationEntry::Subscribed(params, id) => {
                 write!(f, "Subscribed({params:?}, {id:?})")
             }
@@ -736,6 +725,10 @@ impl RpcSubscriptions {
         }));
     }
 
+    pub fn notify_epoch_updates(&self, epoch_updates: EpochUpdates) {
+        self.enqueue_notification(NotificationEntry::EpochUpdates(epoch_updates));
+    }
+    
     pub fn notify_signatures_received(&self, slot_signatures: (Slot, Vec<Signature>)) {
         self.enqueue_notification(NotificationEntry::SignaturesReceived(slot_signatures));
     }
@@ -910,6 +903,16 @@ impl RpcSubscriptions {
                                         }
                                     }
                                 }
+                            }
+                        }
+                        NotificationEntry::EpochUpdates(epoch_updates) => {
+                            if let Some(sub) = subscriptions
+                                .node_progress_watchers()
+                                .get(&SubscriptionParams::Epoch)
+                            {
+                                debug!("epoch notify: {:?}", epoch_updates);
+                                inc_new_counter_info!("rpc-subscription-notify-epoch", 1);
+                                notifier.notify(epoch_updates, sub, false);
                             }
                         }
                     }

@@ -132,6 +132,7 @@ struct SentNotificationStats {
     num_root: AtomicUsize,
     num_vote: AtomicUsize,
     num_block: AtomicUsize,
+    num_epoch: AtomicUsize,
     total_creation_to_queue_time_us: AtomicU64,
     last_report: AtomicInterval,
 }
@@ -234,6 +235,9 @@ fn increment_sent_notification_stats(
         }
         SubscriptionParams::Block(_) => {
             stats.num_block.fetch_add(1, Ordering::Relaxed);
+        }
+        SubscriptionParams::Epoch => {
+            stats.num_epoch.fetch_add(1, Ordering::Relaxed);
         }
     }
     stats.total_creation_to_queue_time_us.fetch_add(
