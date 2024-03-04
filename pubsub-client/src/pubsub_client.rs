@@ -86,6 +86,8 @@
 //! # Ok::<(), anyhow::Error>(())
 //! ```
 
+use solana_rpc_client_api::response::EpochUpdates;
+
 pub use crate::nonblocking::pubsub_client::PubsubClientError;
 use {
     crossbeam_channel::{unbounded, Receiver, Sender},
@@ -802,6 +804,40 @@ impl PubsubClient {
         Ok(PubsubClientSubscription {
             message_type: PhantomData,
             operation: "slotsUpdates",
+            socket,
+            subscription_id,
+            t_cleanup: Some(t_cleanup),
+            exit,
+        })
+    }
+
+    pub fn epoch_updates_subscribe(
+        url: &str,
+        handler: impl Fn(EpochUpdates) + Send + 'static,
+    ) -> Result<PubsubClientSubscription<EpochUpdates>, PubsubClientError> {
+        let url = Url::parse(url)?;
+        let socket = connect_with_retry(url)?;
+
+        let socket = Arc::new(RwLock::new(socket));
+        let socket_clone = socket.clone();
+        let exit = Arc::new(AtomicBool::new(false));
+        let exit_clone = exit.clone();
+        let body = json!({
+            "jsonrpc":"2.0",
+            "id":1,
+            "method":"epochUpdatesSubscribe",
+            "params":[]
+        })
+        .to_string();
+        let subscription_id = PubsubSlotClientSubscription::send_subscribe(&socket, body)?;
+
+        let t_cleanup = std::thread::spawn(move || {
+            Self::cleanup_with_handler(exit_clone, &socket_clone, handler)
+        });
+
+        Ok(PubsubClientSubscription {
+            message_type: PhantomData,
+            operation: "epochUpdates",
             socket,
             subscription_id,
             t_cleanup: Some(t_cleanup),

@@ -185,12 +185,11 @@ use {
         error_object::RpcErrorObject,
         filter::maybe_map_filters,
         response::{
-            Response as RpcResponse, RpcBlockUpdate, RpcKeyedAccount, RpcLogsResponse,
-            RpcSignatureResult, RpcVersionInfo, RpcVote, SlotInfo, SlotUpdate,
+            EpochUpdates, Response as RpcResponse, RpcBlockUpdate, RpcKeyedAccount, RpcLogsResponse, RpcSignatureResult, RpcVersionInfo, RpcVote, SlotInfo, SlotUpdate
         },
     },
     solana_sdk::{clock::Slot, pubkey::Pubkey, signature::Signature},
-    std::collections::BTreeMap,
+    std::{collections::BTreeMap, ops::Sub},
     thiserror::Error,
     tokio::{
         net::TcpStream,
@@ -530,6 +529,10 @@ impl PubsubClient {
     /// [`slotUpdatesSubscribe`]: https://docs.solana.com/api/websocket#slotsupdatessubscribe
     pub async fn slot_updates_subscribe(&self) -> SubscribeResult<'_, SlotUpdate> {
         self.subscribe("slotsUpdates", json!([])).await
+    }
+
+    pub async fn epoch_updates_subscribe(&self) -> SubscribeResult<'_, EpochUpdates> {
+        self.subscribe("epochUpdates", json!([])).await
     }
 
     async fn run_ws(
