@@ -318,10 +318,19 @@ mod internal {
         #[rpc(name = "slotsUpdatesSubscribe")]
         fn slots_updates_subscribe(&self) -> Result<SubscriptionId>;
 
+        
         // Unsubscribe from slots updates notification subscription.
         #[rpc(name = "slotsUpdatesUnsubscribe")]
         fn slots_updates_unsubscribe(&self, id: SubscriptionId) -> Result<bool>;
+        
+        //Get series of epoch updates with vote accounts of nodes
+        #[rpc(name = "epochsUpdatesSubscribe")]
+        fn epoch_updates_subscribe(&self) -> Result<SubscriptionId>;
 
+        // Unsubscribe from epoch updates notification subscription.
+        #[rpc(name = "epochsUpdatesUnsubscribe")]
+        fn epoch_updates_unsubscribe(&self, id: SubscriptionId) -> Result<bool>;
+        
         // Subscribe to block data and content
         #[rpc(name = "blockSubscribe")]
         fn block_subscribe(
@@ -528,6 +537,14 @@ impl RpcSolPubSubInternal for RpcSolPubSubImpl {
     }
 
     fn slots_updates_unsubscribe(&self, id: SubscriptionId) -> Result<bool> {
+        self.unsubscribe(id)
+    }
+
+    fn epoch_updates_subscribe(&self) -> Result<SubscriptionId> {
+        self.subscribe(SubscriptionParams::Epoch)
+    }
+
+    fn epoch_updates_unsubscribe(&self, id: SubscriptionId) -> Result<bool> {
         self.unsubscribe(id)
     }
 
