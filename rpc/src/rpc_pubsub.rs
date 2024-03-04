@@ -330,7 +330,7 @@ mod internal {
         // Unsubscribe from epoch updates notification subscription.
         #[rpc(name = "epochsUpdatesUnsubscribe")]
         fn epoch_updates_unsubscribe(&self, id: SubscriptionId) -> Result<bool>;
-        
+
         // Subscribe to block data and content
         #[rpc(name = "blockSubscribe")]
         fn block_subscribe(
@@ -541,7 +541,7 @@ impl RpcSolPubSubInternal for RpcSolPubSubImpl {
     }
 
     fn epoch_updates_subscribe(&self) -> Result<SubscriptionId> {
-        self.subscribe(SubscriptionParams::Epoch)
+        self.subscribe(SubscriptionParams::EpochUpdates)
     }
 
     fn epoch_updates_unsubscribe(&self, id: SubscriptionId) -> Result<bool> {

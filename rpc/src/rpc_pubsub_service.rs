@@ -236,7 +236,7 @@ fn increment_sent_notification_stats(
         SubscriptionParams::Block(_) => {
             stats.num_block.fetch_add(1, Ordering::Relaxed);
         }
-        SubscriptionParams::Epoch => {
+        SubscriptionParams::EpochUpdates => {
             stats.num_epoch.fetch_add(1, Ordering::Relaxed);
         }
     }

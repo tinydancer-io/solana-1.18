@@ -728,7 +728,7 @@ impl RpcSubscriptions {
     pub fn notify_epoch_updates(&self, epoch_updates: EpochUpdates) {
         self.enqueue_notification(NotificationEntry::EpochUpdates(epoch_updates));
     }
-    
+
     pub fn notify_signatures_received(&self, slot_signatures: (Slot, Vec<Signature>)) {
         self.enqueue_notification(NotificationEntry::SignaturesReceived(slot_signatures));
     }
@@ -908,7 +908,7 @@ impl RpcSubscriptions {
                         NotificationEntry::EpochUpdates(epoch_updates) => {
                             if let Some(sub) = subscriptions
                                 .node_progress_watchers()
-                                .get(&SubscriptionParams::Epoch)
+                                .get(&SubscriptionParams::EpochUpdates)
                             {
                                 debug!("epoch notify: {:?}", epoch_updates);
                                 inc_new_counter_info!("rpc-subscription-notify-epoch", 1);
