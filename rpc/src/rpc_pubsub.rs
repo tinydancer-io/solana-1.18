@@ -197,7 +197,7 @@ pub trait RpcSolPubSub {
         subscribe,
         name = "epochsUpdatesSubscribe"
     )]
-    fn epoch_updates_subscribe(
+    fn epochs_updates_subscribe(
         &self,
         meta: Self::Metadata,
         subscriber: Subscriber<Arc<EpochUpdates>>,
@@ -209,7 +209,7 @@ pub trait RpcSolPubSub {
         unsubscribe,
         name = "epochsUpdatesUnsubscribe"
     )]
-    fn epoch_updates_unsubscribe(
+    fn epochs_updates_unsubscribe(
         &self,
         meta: Option<Self::Metadata>,
         id: PubSubSubscriptionId,
@@ -352,7 +352,7 @@ mod internal {
 
         // Unsubscribe from epoch updates notification subscription.
         #[rpc(name = "epochsUpdatesUnsubscribe")]
-        fn epoch_updates_unsubscribe(&self, id: SubscriptionId) -> Result<bool>;
+        fn epochs_updates_unsubscribe(&self, id: SubscriptionId) -> Result<bool>;
 
         // Subscribe to block data and content
         #[rpc(name = "blockSubscribe")]
@@ -567,7 +567,7 @@ impl RpcSolPubSubInternal for RpcSolPubSubImpl {
         self.subscribe(SubscriptionParams::EpochUpdates)
     }
 
-    fn epoch_updates_unsubscribe(&self, id: SubscriptionId) -> Result<bool> {
+    fn epochs_updates_unsubscribe(&self, id: SubscriptionId) -> Result<bool> {
         self.unsubscribe(id)
     }
 
