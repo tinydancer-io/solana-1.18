@@ -193,7 +193,7 @@ pub trait RpcSolPubSub {
     ) -> Result<bool>;
 
     #[pubsub(
-        subscription = "epochsUpdatesNotification",
+        subscription = "epochUpdatesNotification",
         subscribe,
         name = "epochsUpdatesSubscribe"
     )]
@@ -205,7 +205,7 @@ pub trait RpcSolPubSub {
 
     // Unsubscribe from epoch updates notification subscription.
     #[pubsub(
-        subscription = "epochsUpdatesNotification",
+        subscription = "epochUpdatesNotification",
         unsubscribe,
         name = "epochsUpdatesUnsubscribe"
     )]
