@@ -531,7 +531,7 @@ impl PubsubClient {
         self.subscribe("slotsUpdates", json!([])).await
     }
 
-    pub async fn epoch_updates_subscribe(&self) -> SubscribeResult<'_, EpochUpdates> {
+    pub async fn epochs_updates_subscribe(&self) -> SubscribeResult<'_, EpochUpdates> {
         self.subscribe("epochsUpdates", json!([])).await
     }
 
