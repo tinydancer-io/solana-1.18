@@ -811,7 +811,7 @@ impl PubsubClient {
         })
     }
 
-    pub fn epoch_updates_subscribe(
+    pub fn epochs_updates_subscribe(
         url: &str,
         handler: impl Fn(EpochUpdates) + Send + 'static,
     ) -> Result<PubsubClientSubscription<EpochUpdates>, PubsubClientError> {
