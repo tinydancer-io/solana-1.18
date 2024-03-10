@@ -111,7 +111,7 @@ impl SubscriptionParams {
             | SubscriptionParams::Slot
             | SubscriptionParams::SlotsUpdates
             | SubscriptionParams::Vote => return false,
-            SubscriptionParams::EpochUpdates => return false,
+            SubscriptionParams::EpochUpdates => return true,
         };
         commitment.is_confirmed()
     }
