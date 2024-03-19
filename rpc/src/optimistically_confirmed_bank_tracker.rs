@@ -334,6 +334,56 @@ impl OptimisticallyConfirmedBankTracker {
                         w_optimistically_confirmed_bank.bank = bank.clone();
                     }
 
+                    if is_enabled_this_epoch(&bank) {
+                        let handle = bank.epoch_stakes(bank.epoch()).unwrap().node_id_to_vote_accounts();
+                        let mut new_map = HashMap::with_capacity(handle.len());
+    
+                        for (k, v) in handle.iter() {
+                            let k = k.to_string();
+                            let vote_accounts_strings = v
+                                .vote_accounts
+                                .iter()
+                                .map(|pubkey| pubkey.to_string())
+                                .collect::<Vec<String>>();
+                
+                            let node_vote_accounts = TotalNodeVoteAccounts {
+                                vote_accounts: vote_accounts_strings,
+                                total_stake: v.total_stake,
+                            };
+                            new_map.insert(k, node_vote_accounts);
+                        }
+                        
+                        subscriptions.notify_epoch_updates(EpochUpdates {
+                            epoch: bank.epoch(),
+                            absolute_slot: bank.slot(),
+                            node_id_to_vote_accounts: new_map,
+                        });
+                    } else {
+                        let handle = bank.epoch_stakes(bank.epoch()).unwrap().node_id_to_vote_accounts();
+                        let mut new_map = HashMap::with_capacity(handle.len());
+    
+                        for (k, v) in handle.iter() {
+                            let k = k.to_string();
+                            let vote_accounts_strings = v
+                                .vote_accounts
+                                .iter()
+                                .map(|pubkey| pubkey.to_string())
+                                .collect::<Vec<String>>();
+                
+                            let node_vote_accounts = TotalNodeVoteAccounts {
+                                vote_accounts: vote_accounts_strings,
+                                total_stake: v.total_stake,
+                            };
+                            new_map.insert(k, node_vote_accounts);
+                        }
+    
+                        subscriptions.notify_epoch_updates(EpochUpdates {
+                            epoch: bank.epoch(),
+                            absolute_slot: bank.slot(),
+                            node_id_to_vote_accounts: new_map,
+                        });
+                    }    
+
                     if slot > *highest_confirmed_slot {
                         Self::notify_or_defer_confirmed_banks(
                             subscriptions,
