@@ -123,6 +123,7 @@ impl SubscriptionParams {
                 | SubscriptionParams::SlotsUpdates
                 | SubscriptionParams::Root
                 | SubscriptionParams::Vote
+                | SubscriptionParams::EpochUpdates
         )
     }
 }
