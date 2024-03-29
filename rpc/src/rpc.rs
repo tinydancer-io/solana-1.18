@@ -19,6 +19,7 @@ use {
         inline_spl_token::{SPL_TOKEN_ACCOUNT_MINT_OFFSET, SPL_TOKEN_ACCOUNT_OWNER_OFFSET},
         inline_spl_token_2022::{self, ACCOUNTTYPE_ACCOUNT},
     },
+    solana_program::{instruction::CompiledInstruction, message::Message},
     solana_client::connection_cache::{ConnectionCache, Protocol},
     solana_entry::entry::Entry,
     solana_faucet::faucet::request_airdrop_transaction,
@@ -87,7 +88,8 @@ use {
     solana_storage_bigtable::Error as StorageError,
     solana_streamer::socket::SocketAddrSpace,
     solana_transaction_status::{
-        map_inner_instructions, BlockEncodingOptions, ConfirmedBlock,
+    EncodedTransaction, TransactionDetails, VoteSignatures,
+    map_inner_instructions, BlockEncodingOptions, ConfirmedBlock,
         ConfirmedTransactionStatusWithSignature, ConfirmedTransactionWithStatusMeta,
         EncodedConfirmedTransactionWithStatusMeta, Reward, RewardType, TransactionBinaryEncoding,
         TransactionConfirmationStatus, TransactionStatus, UiConfirmedBlock, UiTransactionEncoding,
@@ -1348,7 +1350,106 @@ impl JsonRpcRequestProcessor {
             }
         }
     }
+      pub async fn get_vote_signatures(
+        &self,
+        slot: Slot,
+        config: Option<RpcGetVoteSignaturesConfig>,
+    ) -> Result<VoteSignatures> {
+        const VOTE_PROGRAM_ID: &str = "Vote111111111111111111111111111111111111111";
 
+        // manually constructing config for `getBlock`
+        let cfg = Some(RpcEncodingConfigWrapper::Current(Some(RpcBlockConfig {
+            encoding: Some(UiTransactionEncoding::Json),
+            transaction_details: Some(TransactionDetails::Full),
+            rewards: None,
+            commitment: Some(CommitmentConfig {
+                commitment: CommitmentLevel::Confirmed,
+            }),
+            max_supported_transaction_version: Some(0),
+        })));
+
+        let block = self.get_block(slot, cfg).await;
+        let mut vote_signatures: VoteSignatures = VoteSignatures::default();
+
+        // info!("harsh | txn {:?}", block.clone.unwrap().unwrap().transactions.unwrap().len());
+        for outer_txn in block.unwrap().unwrap().transactions.unwrap() {
+            if let EncodedTransaction::Json(inner_txn) = outer_txn.transaction  {
+                    match inner_txn.message {
+                        solana_transaction_status::UiMessage::Raw(message) => {
+                            let aks: HashSet<String> = message
+                                .account_keys
+                                .clone()
+                                .into_iter()
+                                .map(|key| key)
+                                .collect();
+                            
+                            let mut compiled_instruction: Vec<CompiledInstruction> = vec![];
+                            let mut account_keys: Vec<Pubkey> = vec![];
+
+                            let messagec = message.clone();
+                            for ui_ix in messagec.instructions{
+                                compiled_instruction.push(
+                                    CompiledInstruction { program_id_index: ui_ix.program_id_index, accounts: ui_ix.accounts, data: bs58::decode( ui_ix.data).into_vec().unwrap() }
+                                );
+                            }
+                            for key in messagec.account_keys{
+                                account_keys.push(
+                                    Pubkey::from_str(&key).unwrap()
+                                );
+                            }
+                           let vote_message = Message{
+                               header: messagec.header,
+                               account_keys,
+                               recent_blockhash: Hash::from_str(&messagec.recent_blockhash).unwrap(),
+                               instructions: compiled_instruction
+                           };
+                           let vote_message = vote_message.serialize();
+                            let validator_identity =
+                                message.account_keys.get(0).unwrap();
+
+                            if let Some(c) = config.clone() {
+                                match c.vote_pubkey {
+                                    Some(p) => {
+                                        if aks.contains(&VOTE_PROGRAM_ID.to_string())
+                                            // p == validator_identity // for a single validator identity check
+                                            && p.contains(validator_identity.as_str()) 
+                                        {
+                                            let vote_signature =
+                                                Some(inner_txn.signatures[0].clone());
+                                            vote_signatures.vote_signature.push(vote_signature);
+                                            let vote_message = Some(vote_message);
+                                            vote_signatures.vote_messages.push(vote_message);
+                                        }
+                                            // } else if aks.contains(&VOTE_PROGRAM_ID.to_string()) {
+                                        //     let vote_signature =
+                                        //         Some(inner_txn.signatures[0].clone());
+                                        //     vote_signatures.vote_signature.push(vote_signature);
+                                        //     let vote_message = Some(vote_message);
+                                        //     vote_signature.vote_messages.push(vote_message);
+                                        // }
+                                    }
+                                    // if there's no specified vote_pubkey in config, then collect all vote signatures
+                                    None => {
+                                        if aks.contains(&VOTE_PROGRAM_ID.to_string())
+                                        {
+                                            let vote_signature =
+                                                Some(inner_txn.signatures[0].clone());
+                                            vote_signatures.vote_signature.push(vote_signature);
+                                            let vote_message = Some(vote_message);
+                                            vote_signatures.vote_messages.push(vote_message);
+                                        }
+                                    }
+                                }
+                            };
+                        }
+                        _ => {
+                            error!("harsh | failing here {:?}", inner_txn.message);
+                        }
+                    }
+                }
+        }
+        Ok(vote_signatures)
+    }
     pub fn get_signature_confirmation_status(
         &self,
         signature: Signature,
@@ -3318,6 +3419,14 @@ pub mod rpc_full {
             config: Option<RpcEncodingConfigWrapper<RpcBlockConfig>>,
         ) -> BoxFuture<Result<Option<UiConfirmedBlock>>>;
 
+        #[rpc(meta, name = "getVoteSignatures")]
+        fn get_vote_signatures(
+            &self,
+            meta: Self::Metadata,
+            slot: Slot,
+            config: Option<RpcGetVoteSignaturesConfig>,
+        ) -> BoxFuture<Result<VoteSignatures>>;
+
         #[rpc(meta, name = "getBlockTime")]
         fn get_block_time(
             &self,
@@ -3431,6 +3540,16 @@ pub mod rpc_full {
                 .collect())
         }
 
+        fn get_vote_signatures(
+            &self,
+            meta: Self::Metadata,
+            slot: Slot,
+            config: Option<RpcGetVoteSignaturesConfig>,
+        ) -> BoxFuture<Result<VoteSignatures>> {
+            debug!("get_block_headers rpc request received: {:?}", slot);
+            Box::pin(async move { meta.get_vote_signatures(slot, config).await })
+        }
+        
         fn get_cluster_nodes(&self, meta: Self::Metadata) -> Result<Vec<RpcContactInfo>> {
             debug!("get_cluster_nodes rpc request received");
             let cluster_info = &meta.cluster_info;
@@ -4258,7 +4377,15 @@ pub mod rpc_deprecated_v1_7 {
                     .await
             })
         }
-
+        // fn get_vote_signatures(
+        //     &self,
+        //     meta: Self::Metadata,
+        //     slot: Slot,
+        //     config: Option<RpcGetVoteSignaturesConfig>,
+        // ) -> BoxFuture<Result<VoteSignatures>> {
+        //     debug!("get_block_headers rpc request received: {:?}", slot);
+        //     Box::pin(async move { meta.get_vote_signatures(slot, config).await })
+        // }
         fn get_confirmed_blocks(
             &self,
             meta: Self::Metadata,

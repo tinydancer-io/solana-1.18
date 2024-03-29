@@ -38,6 +38,7 @@ solana-gossip = { workspace = true }
 solana-ledger = { workspace = true }
 solana-measure = { workspace = true }
 solana-metrics = { workspace = true }
+solana-program = { workshpace = true }
 solana-perf = { workspace = true }
 solana-poh = { workspace = true }
 solana-rayon-threadlimit = { workspace = true }

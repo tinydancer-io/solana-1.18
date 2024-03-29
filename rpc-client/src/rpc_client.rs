@@ -48,6 +48,7 @@ use {
         transaction::{self, uses_durable_nonce, Transaction, VersionedTransaction},
     },
     solana_transaction_status::{
+        VoteSignatures,
         EncodedConfirmedBlock, EncodedConfirmedTransactionWithStatusMeta, TransactionStatus,
         UiConfirmedBlock, UiTransactionEncoding,
     },
@@ -2120,7 +2121,17 @@ impl RpcClient {
     ) -> ClientResult<UiConfirmedBlock> {
         self.invoke((self.rpc_client.as_ref()).get_block_with_config(slot, config))
     }
-
+    pub fn get_vote_signatures(
+            &self,
+            slot: Slot,
+            config: RpcGetVoteSignaturesConfig,
+        ) -> ClientResult<VoteSignatures> {
+            self.invoke((self.rpc_client.as_ref()).get_vote_signatures(
+                slot,
+                UiTransactionEncoding::Json,
+                config,
+            ))
+    }
     #[deprecated(since = "1.7.0", note = "Please use RpcClient::get_block() instead")]
     #[allow(deprecated)]
     pub fn get_confirmed_block(&self, slot: Slot) -> ClientResult<EncodedConfirmedBlock> {

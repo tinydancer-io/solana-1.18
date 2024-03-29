@@ -12,6 +12,7 @@ use solana_rpc_client_api::deprecated_config::{
     RpcConfirmedBlockConfig, RpcConfirmedTransactionConfig,
     RpcGetConfirmedSignaturesForAddress2Config,
 };
+use solana_transaction_status::VoteSignatures;
 #[cfg(feature = "spinner")]
 use {crate::spinner, solana_sdk::clock::MAX_HASH_AGE_IN_SECONDS, std::cmp::min};
 use {
@@ -2487,6 +2488,20 @@ impl RpcClient {
             .await
     }
 
+    pub async fn get_vote_signatures(
+        &self,
+        slot: Slot,
+        encoding: UiTransactionEncoding,
+        config: RpcGetVoteSignaturesConfig,
+    ) -> ClientResult<VoteSignatures> {
+        self.send(
+            self.maybe_map_request(RpcRequest::GetVoteSignatures)
+                .await?,
+            json!([slot, encoding, config]),
+        )
+        .await
+    }
+
     /// Returns identity and transaction information about a confirmed block in the ledger.
     ///
     /// # RPC Reference
@@ -2854,6 +2869,7 @@ impl RpcClient {
         )
         .await
     }
+    
 
     #[deprecated(since = "1.7.0", note = "Please use RpcClient::get_blocks() instead")]
     #[allow(deprecated)]
