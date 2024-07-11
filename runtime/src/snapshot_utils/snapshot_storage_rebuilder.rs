@@ -41,7 +41,7 @@ lazy_static! {
 }
 
 /// Convenient wrapper for snapshot version and rebuilt storages
-pub(crate) struct RebuiltSnapshotStorage {
+pub struct RebuiltSnapshotStorage {
     /// Snapshot version
     pub snapshot_version: SnapshotVersion,
     /// Rebuilt storages
