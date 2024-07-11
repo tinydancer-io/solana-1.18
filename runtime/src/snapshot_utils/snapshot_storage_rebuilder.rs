@@ -73,7 +73,7 @@ pub struct SnapshotStorageRebuilder {
 
 impl SnapshotStorageRebuilder {
     /// Synchronously spawns threads to rebuild snapshot storages
-    pub(crate) fn rebuild_storage(
+    pub fn rebuild_storage(
         file_receiver: Receiver<PathBuf>,
         num_threads: usize,
         next_append_vec_id: Arc<AtomicAppendVecId>,
@@ -446,7 +446,7 @@ fn get_snapshot_file_kind(filename: &str) -> Option<SnapshotFileKind> {
 }
 
 /// Get the slot and append vec id from the filename
-pub(crate) fn get_slot_and_append_vec_id(filename: &str) -> (Slot, usize) {
+pub fn get_slot_and_append_vec_id(filename: &str) -> (Slot, usize) {
     STORAGE_FILE_REGEX
         .captures(filename)
         .map(|cap| {
