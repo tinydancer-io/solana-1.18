@@ -50,7 +50,7 @@ pub(crate) struct RebuiltSnapshotStorage {
 
 /// Stores state for rebuilding snapshot storages
 #[derive(Debug)]
-pub(crate) struct SnapshotStorageRebuilder {
+pub struct SnapshotStorageRebuilder {
     /// Receiver for unpacked snapshot storage files
     file_receiver: Receiver<PathBuf>,
     /// Number of threads to rebuild with
