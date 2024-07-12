@@ -266,7 +266,7 @@ pub struct SnapshotRootPaths {
 #[derive(Debug)]
 pub struct UnarchivedSnapshot {
     #[allow(dead_code)]
-    unpack_dir: TempDir,
+    pub unpack_dir: TempDir,
     pub storage: AccountStorageMap,
     pub unpacked_snapshots_dir_and_version: UnpackedSnapshotsDirAndVersion,
     pub measure_untar: Measure,
