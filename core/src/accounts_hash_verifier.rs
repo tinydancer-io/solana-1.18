@@ -286,7 +286,7 @@ impl AccountsHashVerifier {
     }
 
     /// returns calculated accounts hash
-    fn calculate_and_verify_accounts_hash(
+    pub fn calculate_and_verify_accounts_hash(
         accounts_package: &AccountsPackage,
         snapshot_config: &SnapshotConfig,
     ) -> AccountsHashKind {
