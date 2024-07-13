@@ -136,6 +136,7 @@ edition = "2021"
 [workspace.dependencies]
 Inflector = "0.11.4"
 aquamarine = "0.3.3"
+risc0-zkvm = "1.0.1"
 aes-gcm-siv = "0.10.3"
 ahash = "0.8.7"
 anyhow = "1.0.79"
@@ -471,6 +472,7 @@ crossbeam-epoch = { git = "https://github.com/solana-labs/crossbeam", rev = "fd2
 # comments and the overrides in sync.
 solana-program = { path = "sdk/program" }
 solana-zk-token-sdk = { path = "zk-token-sdk" }
+solana-sdk = { path = "sdk"}
 #
 # === zeroize versioning issues ===
 #
@@ -510,6 +512,11 @@ solana-zk-token-sdk = { path = "zk-token-sdk" }
 [patch.crates-io.aes-gcm-siv]
 git = "https://github.com/RustCrypto/AEADs"
 rev = "6105d7a5591aefa646a95d12b5e8d3f55a9214ef"
+
+
+[patch.crates-io.digest]
+git = "https://github.com/tinydancer-io/traits"
+branch = "master"
 
 # Our dependency tree has `curve25519-dalek` v3.2.1.  They have removed the
 # constraint in the next major release. The commit that removes the `zeroize`
