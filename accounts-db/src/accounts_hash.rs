@@ -182,7 +182,7 @@ pub struct CalcAccountsHashConfig<'a> {
 // smallest, 3 quartiles, largest, average
 pub type StorageSizeQuartileStats = [usize; 6];
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct HashStats {
     pub total_us: u64,
     pub mark_time_us: u64,
@@ -316,7 +316,7 @@ impl HashStats {
 /// Note this can be saved/loaded during hash calculation to a memory mapped file whose contents are
 /// [CalculateHashIntermediate]
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Pod, Zeroable, Serialize, Deserialize)]
 pub struct CalculateHashIntermediate {
     pub hash: AccountHash,
     pub lamports: u64,
@@ -1226,7 +1226,7 @@ pub enum ZeroLamportAccounts {
 
 /// Hash of an account
 #[repr(transparent)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Pod, Zeroable, AbiExample)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Pod, Zeroable, AbiExample, Serialize, Deserialize)]
 pub struct AccountHash(pub Hash);
 
 // Ensure the newtype wrapper never changes size from the underlying Hash
