@@ -4,7 +4,7 @@ MG=5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d
 TG=4uhcVJyU9pJkvQyS88uRDiswHXSCkY3zQawwpjk2NsNY
 # valgrind --leak-check=full --main-stacksize=10000000 --num-callers=500 
 
-exec target/release/solana-validator \
+exec solana-validator \
 --identity keypair.json \
 --entrypoint entrypoint.testnet.solana.com:8001 \
 --entrypoint entrypoint2.testnet.solana.com:8001 \
@@ -21,7 +21,7 @@ exec target/release/solana-validator \
 --log /mnt/ssd1/validator.log \
 --accounts /mnt/ssd1/accounts \
 --ledger /mnt/ssd1/ledger \
---snapshots /mnt/ssd1/snapshots \
+--snapshots /mnt/ssd1/snapshots/ \
 --limit-ledger-size 400000000 \
 --rpc-send-default-max-retries 3 \
 --rpc-send-service-max-retries 3 \
@@ -30,10 +30,19 @@ exec target/release/solana-validator \
 --accounts-index-memory-limit-mb 250 \
 --no-poh-speed-test \
 --only-known-rpc \
+--no-genesis-fetch \
+--no-snapshot-fetch \
 --accountsdb-plugin-config /root/solana-proofs/config.json \
 --known-validator 5D1fNXzvv5NjV1ysLjirC4WY92RNsVH18vjmcszZd8on \
---known-validator eoKpUABi59aT4rR9HGS3LcMecfut9x7zJyodWWP43YQ \
+--known-validator 3bdNi33it9URAF924sN3xhP7zSRdYYVSunjXnDXeBwjf \
+--known-validator iceTv97XsSTXLqrJvYMf38uqXCd7KaK4NCEFSXSArWq \
 --known-validator nqkFSApiR4mTENxvmQwsNy9hXF2MGb6NqCA4Epmp7AH \
+--known-validator FjKF66X21e5rftc8sDjqUcgqLCg7zrfEPDy8DUnuKoiW \
+--known-validator 2MKDS92VhMDnjYpuyYCupM9MfGFTcRQsAUvRmGd5eFvn \
+--known-validator eoKpUABi59aT4rR9HGS3LcMecfut9x7zJyodWWP43YQ \
+--known-validator 9QxCLckBiJc783jnMvXZubK4wH86Eqqvashtrwvcsgkv \
+--known-validator dDzy5SR3AXdYWVqbDEkVFdvSPCtS9ihF5kJkHCtXoFs \
+--known-validator D52Q6Ap8RVMw1EvJYTdEABP6M5SPg98aToMcqw7KVLD9 \
 --expected-genesis-hash $TG 
 
 
