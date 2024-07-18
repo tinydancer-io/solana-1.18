@@ -7642,7 +7642,7 @@ impl AccountsDb {
         Ok((incremental_accounts_hash, capitalization))
     }
 
-    fn _prepare_accounts_hash_prerequisites(
+    pub fn _prepare_accounts_hash_prerequisites(
         &self,
         config: &CalcAccountsHashConfig<'_>,
         storages: &SortedStorages<'_>,
