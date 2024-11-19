@@ -7196,6 +7196,83 @@ impl AccountsDb {
         result
     }
 
+    pub fn _prepare_accounts_hash_prerequisites(
+        &self,
+        config: &CalcAccountsHashConfig<'_>,
+        storages: &SortedStorages<'_>,
+        mut stats: HashStats,
+        kind: CalcAccountsHashKind,
+    ) -> Result<(Vec<Vec<CalculateHashIntermediate>>, HashStats), AccountsHashVerificationError>
+    {
+        let total_time = Measure::start("");
+        let _guard = self.active_stats.activate(ActiveStatItem::Hash);
+        let storages_start_slot = storages.range().start;
+        stats.oldest_root = storages_start_slot;
+
+        self.mark_old_slots_as_dirty(storages, config.epoch_schedule.slots_per_epoch, &mut stats);
+
+        let slot = storages.max_slot_inclusive();
+        let use_bg_thread_pool = config.use_bg_thread_pool;
+        let accounts_hash_cache_path = self.accounts_hash_cache_path.clone();
+        let transient_accounts_hash_cache_dir = TempDir::new_in(&accounts_hash_cache_path)
+            .expect("create transient accounts hash cache dir");
+        let transient_accounts_hash_cache_path =
+            transient_accounts_hash_cache_dir.path().to_path_buf();
+
+        let (cache_hash_data, cache_hash_data_us) = measure_us!(Self::get_cache_hash_data(
+            accounts_hash_cache_path,
+            config,
+            kind,
+            slot,
+            storages_start_slot,
+        ));
+        stats.cache_hash_data_us += cache_hash_data_us;
+
+        let bounds = Range {
+            start: 0,
+            end: PUBKEY_BINS_FOR_CALCULATING_HASHES,
+        };
+
+        let accounts_hasher = AccountsHasher {
+            zero_lamport_accounts: kind.zero_lamport_accounts(),
+            dir_for_temp_cache_files: transient_accounts_hash_cache_path,
+            active_stats: &self.active_stats,
+        };
+
+        // get raw data by scanning
+        let cache_hash_data_file_references = self.scan_snapshot_stores_with_cache(
+            &cache_hash_data,
+            storages,
+            &mut stats,
+            PUBKEY_BINS_FOR_CALCULATING_HASHES,
+            &bounds,
+            config,
+        );
+
+        let cache_hash_data_files = cache_hash_data_file_references
+            .iter()
+            .map(|d| d.map())
+            .collect::<Vec<_>>();
+
+        if let Some(err) = cache_hash_data_files
+            .iter()
+            .filter_map(|r| r.as_ref().err())
+            .next()
+        {
+            panic!("failed generating accounts hash files: {:?}", err);
+        }
+
+        // convert mmapped cache files into slices of data
+        let cache_hash_intermediates = cache_hash_data_files
+            .iter()
+            .map(|d| d.as_ref().unwrap().get_cache_hash_data().to_vec())
+            .collect::<Vec<_>>();
+
+        stats.total_us = total_time.end_as_us();
+        stats.log();
+        Ok((cache_hash_intermediates, stats))
+    }
+
     /// Verify accounts hash at startup (or tests)
     ///
     /// Calculate accounts hash(es) and compare them to the values set at startup.
